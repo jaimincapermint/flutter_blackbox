@@ -1,0 +1,249 @@
+import 'package:flutter/material.dart';
+
+import '../../core/performance/fps_monitor.dart';
+import '../../devkit.dart';
+import '../widgets/devkit_colors.dart';
+
+class PerformancePanel extends StatelessWidget {
+  const PerformancePanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<FpsSnapshot>(
+      stream: BlackBox.instance.fpsMonitor.stream,
+      initialData: BlackBox.instance.fpsMonitor.current,
+      builder: (context, snapshot) {
+        final snap = snapshot.data ?? BlackBox.instance.fpsMonitor.current;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── FPS headline metrics ─────────────────────────────────
+              Row(
+                children: [
+                  _MetricCard(
+                    label: 'Current FPS',
+                    value: snap.fps.toStringAsFixed(1),
+                    color: BlackBoxColors.fpsColor(snap.fps),
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    label: 'Avg frame',
+                    value: '${snap.avgFrameMs.toStringAsFixed(1)}ms',
+                    color: snap.isJanky
+                        ? BlackBoxColors.warning
+                        : BlackBoxColors.success,
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    label: 'Worst frame',
+                    value: '${snap.worstFrameMs.toStringAsFixed(1)}ms',
+                    color: snap.worstFrameMs > FpsSnapshot.budgetMs
+                        ? BlackBoxColors.error
+                        : BlackBoxColors.success,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // ── Frame budget bar ─────────────────────────────────────
+              _FrameBudgetBar(snap: snap),
+              const SizedBox(height: 16),
+              // ── Rolling FPS graph ────────────────────────────────────
+              const _SectionTitle('Rolling frame durations (60 frames)'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: _FpsGraph(samples: snap.samples),
+              ),
+              const SizedBox(height: 12),
+              // ── Jank summary ─────────────────────────────────────────
+              _JankSummary(snap: snap),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard(
+      {required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(fontSize: 9, color: Colors.white38)),
+            const SizedBox(height: 4),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FrameBudgetBar extends StatelessWidget {
+  const _FrameBudgetBar({required this.snap});
+  final FpsSnapshot snap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (snap.avgFrameMs / FpsSnapshot.budgetMs).clamp(0.0, 2.0);
+    final color = BlackBoxColors.fpsColor(snap.fps);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('Frame budget usage (16.67ms at 60fps)'),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (pct / 2).clamp(0, 1),
+            minHeight: 8,
+            backgroundColor: Colors.white10,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${(pct * 100).toStringAsFixed(0)}% of frame budget used',
+          style: const TextStyle(fontSize: 10, color: Colors.white38),
+        ),
+      ],
+    );
+  }
+}
+
+class _FpsGraph extends StatelessWidget {
+  const _FpsGraph({required this.samples});
+  final List<double> samples;
+
+  @override
+  Widget build(BuildContext context) {
+    if (samples.isEmpty) {
+      return const Center(
+        child: Text('Collecting frames…',
+            style: TextStyle(fontSize: 11, color: Colors.white38)),
+      );
+    }
+    return CustomPaint(
+      painter: _FpsGraphPainter(samples: samples),
+      size: Size.infinite,
+    );
+  }
+}
+
+class _FpsGraphPainter extends CustomPainter {
+  const _FpsGraphPainter({required this.samples});
+  final List<double> samples;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (samples.isEmpty) return;
+
+    final maxMs = samples.reduce((a, b) => a > b ? a : b).clamp(0.0, 100.0);
+    const budget = FpsSnapshot.budgetMs;
+
+    // Budget line
+    final budgetY = size.height * (1 - (budget / maxMs).clamp(0, 1));
+    canvas.drawLine(
+      Offset(0, budgetY),
+      Offset(size.width, budgetY),
+      Paint()
+        ..color = Colors.orange.withValues(alpha: 0.4)
+        ..strokeWidth = 0.5
+        ..style = PaintingStyle.stroke,
+    );
+
+    // Bar graph
+    final barW = (size.width / samples.length) - 1;
+    for (var i = 0; i < samples.length; i++) {
+      final ms = samples[i].clamp(0.0, maxMs);
+      final barH = size.height * (ms / maxMs);
+      final x = i * (barW + 1);
+      final color =
+          ms > budget ? const Color(0xFFE24B4A) : const Color(0xFF1D9E75);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, size.height - barH, barW, barH),
+          const Radius.circular(2),
+        ),
+        Paint()..color = color.withValues(alpha: 0.8),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FpsGraphPainter old) => old.samples != samples;
+}
+
+class _JankSummary extends StatelessWidget {
+  const _JankSummary({required this.snap});
+  final FpsSnapshot snap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            snap.jankyFrameCount == 0
+                ? Icons.check_circle_outline
+                : Icons.warning_amber_outlined,
+            size: 16,
+            color: snap.jankyFrameCount == 0
+                ? BlackBoxColors.success
+                : BlackBoxColors.warning,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            snap.jankyFrameCount == 0
+                ? 'No jank detected in last ${snap.samples.length} frames'
+                : '${snap.jankyFrameCount} janky frame(s) in last ${snap.samples.length} frames',
+            style: const TextStyle(fontSize: 11, color: Colors.white60),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text,
+        style: const TextStyle(
+            fontSize: 10,
+            color: Colors.white38,
+            fontWeight: FontWeight.w600,
+            letterSpacing: .5));
+  }
+}
