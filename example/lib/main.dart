@@ -23,6 +23,9 @@ void main() {
     // ── Trigger — floating button for easy access ────────────────────
     trigger: const BlackBoxTrigger.floatingButton(),
 
+    // ── Ignore specific high-frequency widgets from the Rebuild list ─
+    ignoredRebuildWidgets: const ['MyNoisyWidget'],
+
     // ── Only active in debug mode ────────────────────────────────────
     enabled: kDebugMode,
   );

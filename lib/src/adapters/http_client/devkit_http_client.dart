@@ -9,18 +9,19 @@ import '../../blackbox.dart';
 /// **Deprecated.** Use `HttpBlackBoxAdapter(client)` instead.
 ///
 /// Previously, you had to replace `http.Client()` with `BlackBoxHttpClient()`.
-/// Now the adapter observes your existing client silently:
+/// Now the adapter provides an observing wrapper client for you:
 ///
 /// ```dart
-/// // ✅ New approach — pass your existing client to the adapter:
-/// final client = http.Client();
-/// BlackBox.setup(httpAdapters: [HttpBlackBoxAdapter(client)]);
+/// // ✅ New approach — use the client provided by the adapter:
+/// final adapter = HttpBlackBoxAdapter(http.Client());
+/// BlackBox.setup(httpAdapters: [adapter]);
+///
+/// final client = adapter.client; // use this client for your API calls
 ///
 /// // ❌ Old approach (still works, but deprecated):
 /// final client = BlackBoxHttpClient();
 /// ```
-@Deprecated(
-    'Use HttpBlackBoxAdapter(client) instead — observe without replacing')
+@Deprecated('Use HttpBlackBoxAdapter(client) and adapter.client instead')
 class BlackBoxHttpClient extends http.BaseClient {
   BlackBoxHttpClient({http.Client? inner}) : _inner = inner ?? http.Client();
 

@@ -265,6 +265,9 @@ void main() {
     // Trigger
     trigger: const BlackBoxTrigger.floatingButton(),
 
+    // Ignore specific noisy widgets from the Rebuild tab
+    ignoredRebuildWidgets: ['MyAppThemeWrapper'],
+
     // Only in debug mode
     enabled: kDebugMode,
   );

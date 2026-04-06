@@ -121,6 +121,7 @@ class BlackBox {
     BlackBoxLogAdapter? logAdapter,
     List<BlackBoxStorageAdapter> storageAdapters = const [],
     BlackBoxTrigger trigger = const BlackBoxTrigger.shake(),
+    List<String> ignoredRebuildWidgets = const [],
     bool? enabled,
 
     /// When `true` (default), keys matching sensitive patterns
@@ -132,6 +133,9 @@ class BlackBox {
     dk._enabled = enabled ?? kDebugMode;
     dk._redactSensitiveData = redactSensitiveData;
     dk._trigger = trigger;
+    if (ignoredRebuildWidgets.isNotEmpty) {
+      _ignoredWidgets.addAll(ignoredRebuildWidgets);
+    }
 
     if (!dk._enabled) return;
 
@@ -273,12 +277,16 @@ class BlackBox {
 
     dk._originalDebugPrint = debugPrint;
     debugPrint = (String? message, {int? wrapWidth}) {
-      if (message != null && message.contains('rebuilt')) {
-        // Flutter's format: "WidgetName(dirty)" or similar
+      if (message != null &&
+          (message.startsWith('Rebuilding ') ||
+              message.startsWith('Building '))) {
+        // Flutter's format: "Rebuilding WidgetName(dirty)"
         final name = _parseWidgetName(message);
         if (name != null) {
           dk.rebuildStore.record(name);
         }
+        // Suppress the log from printing to the IDE console to prevent extreme spam
+        return;
       }
       dk._originalDebugPrint?.call(message ?? '', wrapWidth: wrapWidth ?? 100);
     };
@@ -295,14 +303,59 @@ class BlackBox {
     }
   }
 
+  static final _ignoredWidgets = <String>{
+    'Text', 'Container', 'Padding', 'SizedBox', 'Column', 'Row', 'Align',
+    'Center', 'Positioned', 'Expanded', 'Flexible', 'Stack', 'ListView',
+    'GestureDetector', 'InkWell', 'ConstrainedBox', 'DecoratedBox', 'Theme',
+    'Opacity', 'Transform', 'ClipRRect', 'ClipOval', 'ClipPath', 'ClipRect',
+    'IgnorePointer', 'AbsorbPointer', 'RepaintBoundary', 'FittedBox',
+    'FractionallySizedBox', 'LayoutBuilder', 'Builder', 'StatefulBuilder',
+    'StreamBuilder', 'FutureBuilder', 'ValueListenableBuilder',
+    'AnimatedBuilder', 'Icon', 'Image', 'RichText', 'DefaultTextStyle',
+    'MediaQuery', 'Directionality', 'Visibility', 'Scaffold', 'AppBar',
+    'BottomNavigationBar', 'FloatingActionButton', 'Drawer', 'GridView',
+    'SingleChildScrollView', 'CustomScrollView', 'SliverToBoxAdapter',
+    'SliverList', 'SliverGrid', 'Card', 'Divider', 'ListTile', 'Placeholder',
+    'Tooltip', 'SafeArea', 'Hero', 'Material', 'Ink', 'AnimatedContainer',
+    'AnimatedPadding', 'AnimatedOpacity', 'AnimatedCrossFade',
+    'AnimatedSwitcher', 'AnimatedSize', 'AnimatedPositioned', 'Wrap',
+    'Flow', 'Table', 'PageView', 'Scrollbar', 'RefreshIndicator', 'Navigator',
+    'Overlay', 'FocusScope', 'KeyedSubtree', 'Semantics', 'MergeSemantics',
+    'ExcludeSemantics', 'ColoredBox', 'FractionalTranslation', 'RotatedBox',
+    'BackdropFilter', 'PhysicalModel', 'PhysicalShape', 'CustomPaint',
+    'Offstage', 'TickerMode', 'Focus', 'FocusNode', 'FocusTraversalGroup',
+    'UnmanagedRestorationScope', 'RestorationScope', 'NotificationListener',
+    'ScrollConfiguration', 'Scrollable', 'MouseRegion', 'Listener',
+    'SemanticsDebugger', 'AnimatedTheme', 'IconTheme', 'ColorFiltered',
+    'AnimatedDefaultTextStyle', 'PrimaryScrollController', 'SharedAppData',
+    'MatrixTransition', 'Consumer', 'Provider', 'Selector', 'BlocBuilder',
+    'BlocProvider', 'BlocListener', 'BlocConsumer', 'GetBuilder', 'Obx',
+    'AutomaticKeepAlive', 'KeepAlive', 'Viewport', 'ShrinkWrappingViewport',
+    'SliverPadding', 'RawScrollbar', 'RawGestureDetector', 'ScrollSemantics',
+    'ScrollBehavior', 'GlowingOverscrollIndicator',
+    'OverscrollIndicatorNotification',
+    // 60fps Animators & deep framework listeners
+    'LinearProgressIndicator', 'CircularProgressIndicator',
+    'CupertinoActivityIndicator',
+    'StretchingOverscrollIndicator', 'ListenableBuilder', 'Actions',
+    'TweenAnimationBuilder',
+    'AnimatedWidget', 'RotationTransition', 'ScaleTransition', 'SizeTransition',
+    // Internal Overlay/Blackbox widgets (to prevent infinite loops)
+    'BlackBoxOverlay', 'DevkitOverlay', 'RebuildTrackerWidget',
+    '_RebuildTrackerWidgetState',
+    'TouchEater', 'Draggable', 'PositionedTransition', 'SlideTransition',
+    // Riverpod internal widgets
+    'ConsumerWidget', 'HookConsumerWidget', 'StatefulHookConsumerWidget',
+  };
+
   static String? _parseWidgetName(String message) {
-    // Flutter debug output looks like:
-    // "MyWidget(dirty, state: _MyWidgetState#abc12)"
-    final match = RegExp(r'^(\w+)\(').firstMatch(message.trim());
+    // Flutter debug output: "Rebuilding MyWidget(dirty, state: _MyWidgetState#abc12)"
+    final match =
+        RegExp(r'(?:Building|Rebuilding)\s+(\w+)\(').firstMatch(message.trim());
     if (match != null) {
       final name = match.group(1)!;
-      // Filter out framework-internal widgets
-      if (name.startsWith('_') || name == 'Builder' || name == 'MediaQuery') {
+      // Filter out framework-internal or noisy widgets
+      if (name.startsWith('_') || _ignoredWidgets.contains(name)) {
         return null;
       }
       return name;

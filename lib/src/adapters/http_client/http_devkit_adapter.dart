@@ -12,20 +12,24 @@ import '../http/devkit_http_adapter.dart';
 /// internally without requiring any changes to your HTTP call sites.
 ///
 /// ```dart
-/// final client = http.Client(); // Your trusted code — unchanged
-///
+/// final adapter = HttpBlackBoxAdapter(http.Client());
 /// BlackBox.setup(
-///   httpAdapters: [HttpBlackBoxAdapter(client)],
+///   httpAdapters: [adapter],
 /// );
 ///
-/// // Continue using client exactly as before:
+/// // Use the observing client provided by the adapter:
+/// final client = adapter.client;
 /// final response = await client.get(Uri.parse('https://api.example.com'));
 /// // ↑ BlackBox observes this automatically.
 /// ```
 class HttpBlackBoxAdapter extends BlackBoxHttpAdapter {
-  HttpBlackBoxAdapter(this._client);
+  HttpBlackBoxAdapter([http.Client? client])
+      : _client = client ?? http.Client() {
+    this.client = BlackBoxObservingClient(this, _client);
+  }
 
   final http.Client _client;
+  late final BlackBoxObservingClient client;
   int _idCounter = 0;
 
   @override
@@ -145,5 +149,23 @@ class HttpBlackBoxAdapter extends BlackBoxHttpAdapter {
     if (body == null) return [];
     if (body is String) return utf8.encode(body);
     return utf8.encode(jsonEncode(body));
+  }
+}
+
+/// A wrapper client that intercepts requests and forwards them to [HttpBlackBoxAdapter].
+class BlackBoxObservingClient extends http.BaseClient {
+  BlackBoxObservingClient(this._adapter, this._inner);
+
+  final HttpBlackBoxAdapter _adapter;
+  final http.Client _inner;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _adapter.observeSend(request);
+  }
+
+  @override
+  void close() {
+    _inner.close();
   }
 }
