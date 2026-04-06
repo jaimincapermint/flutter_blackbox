@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/log/log_entry.dart';
 import '../../core/log/log_level.dart';
-import '../../devkit.dart';
+import '../../blackbox.dart';
 import '../widgets/devkit_colors.dart';
 import '../widgets/empty_state.dart';
 

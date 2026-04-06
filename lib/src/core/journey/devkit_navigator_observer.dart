@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../devkit.dart';
+import '../../blackbox.dart';
 import 'journey_event.dart';
 import 'journey_store.dart';
 

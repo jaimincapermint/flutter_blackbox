@@ -4,18 +4,23 @@ import 'package:http/http.dart' as http;
 
 import '../../core/network/network_request.dart';
 import '../../core/network/network_response.dart';
-import '../../devkit.dart';
+import '../../blackbox.dart';
 
-/// A drop-in replacement for [http.Client] that reports every request
-/// and response to BlackBox's network panel and honours mock rules.
+/// **Deprecated.** Use `HttpBlackBoxAdapter(client)` instead.
+///
+/// Previously, you had to replace `http.Client()` with `BlackBoxHttpClient()`.
+/// Now the adapter observes your existing client silently:
 ///
 /// ```dart
-/// // Before
+/// // ✅ New approach — pass your existing client to the adapter:
 /// final client = http.Client();
+/// BlackBox.setup(httpAdapters: [HttpBlackBoxAdapter(client)]);
 ///
-/// // After — one character change
+/// // ❌ Old approach (still works, but deprecated):
 /// final client = BlackBoxHttpClient();
 /// ```
+@Deprecated(
+    'Use HttpBlackBoxAdapter(client) instead — observe without replacing')
 class BlackBoxHttpClient extends http.BaseClient {
   BlackBoxHttpClient({http.Client? inner}) : _inner = inner ?? http.Client();
 
@@ -67,14 +72,12 @@ class BlackBoxHttpClient extends http.BaseClient {
       final response = await _inner.send(request);
       final durationMs = DateTime.now().millisecondsSinceEpoch - startMs;
 
-      // Buffer response so we can log the body and still return a stream
       final bytes = await response.stream.toBytes();
       String? bodyStr;
       try {
-        jsonDecode(utf8.decode(bytes));
         bodyStr = utf8.decode(bytes);
       } catch (_) {
-        bodyStr = utf8.decode(bytes);
+        bodyStr = '<binary data: ${bytes.length} bytes>';
       }
 
       BlackBox.instance.networkStore.onResponse(NetworkResponse(
@@ -85,7 +88,6 @@ class BlackBoxHttpClient extends http.BaseClient {
         body: bodyStr,
       ));
 
-      // Return a new StreamedResponse with the buffered bytes
       return http.StreamedResponse(
         Stream.value(bytes),
         response.statusCode,
@@ -111,8 +113,6 @@ class BlackBoxHttpClient extends http.BaseClient {
 
   @override
   void close() => _inner.close();
-
-  // ── Helpers ───────────────────────────────────────────────────────────
 
   Map<String, dynamic> _sanitiseHeaders(Map<String, String> headers) {
     const redacted = {'authorization', 'cookie', 'set-cookie', 'x-api-key'};

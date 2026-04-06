@@ -4,16 +4,17 @@ import 'dart:ui' as ui;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'adapters/flag/devkit_flag_adapter.dart';
-import 'adapters/flag/local_flag_adapter.dart';
 import 'adapters/http/devkit_http_adapter.dart';
 import 'adapters/log/devkit_log_adapter.dart';
 import 'adapters/log/print_log_adapter.dart';
+import 'adapters/socket/blackbox_socket_adapter.dart';
+import 'adapters/storage/blackbox_storage_adapter.dart';
+import 'core/rebuild/rebuild_store.dart';
 import 'core/crash/crash_entry.dart';
 import 'core/crash/crash_store.dart';
-import 'core/flags/flag_store.dart';
 import 'core/journey/devkit_navigator_observer.dart';
 import 'core/journey/journey_event.dart';
 import 'core/journey/journey_store.dart';
@@ -26,6 +27,8 @@ import 'core/network/network_store.dart';
 import 'core/performance/fps_monitor.dart';
 import 'core/report/devkit_device_info.dart';
 import 'core/report/devkit_report.dart';
+import 'core/socket/socket_event.dart';
+import 'core/socket/socket_store.dart';
 import 'overlay/devkit_trigger.dart';
 
 /// Central singleton that owns all BlackBox stores and wires adapters.
@@ -53,10 +56,25 @@ class BlackBox {
   final logStore = LogStore();
   final networkStore = NetworkStore();
   final mockEngine = MockEngine();
-  final flagStore = FlagStore();
   final fpsMonitor = FpsMonitor();
   final crashStore = CrashStore();
   final journeyStore = JourneyStore();
+  final socketStore = SocketStore();
+  final rebuildStore = RebuildStore();
+
+  // ── Storage adapters ──────────────────────────────────────────────────
+
+  final List<BlackBoxStorageAdapter> _storageAdapters = [];
+
+  List<BlackBoxStorageAdapter> get storageAdapters =>
+      List.unmodifiable(_storageAdapters);
+
+  // ── Rebuild tracking state ────────────────────────────────────────────
+
+  bool _autoRebuildTracking = false;
+  DebugPrintCallback? _originalDebugPrint;
+
+  bool get isAutoRebuildTrackingEnabled => _autoRebuildTracking;
 
   static final journeyObserver =
       BlackBoxNavigatorObserver(_instance.journeyStore);
@@ -64,13 +82,19 @@ class BlackBox {
   // ── Configuration ────────────────────────────────────────────────────
 
   bool _enabled = kDebugMode;
+  bool _redactSensitiveData = true;
   BlackBoxTrigger _trigger = const BlackBoxTrigger.shake();
   final List<BlackBoxHttpAdapter> _httpAdapters = [];
+  final List<BlackBoxSocketAdapter> _socketAdapters = [];
   BlackBoxLogAdapter? _logAdapter;
   FlutterExceptionHandler? _originalFlutterError;
   bool Function(Object, StackTrace)? _originalPlatformError;
 
   bool get isEnabled => _enabled;
+
+  /// Whether sensitive storage keys are redacted in the overlay.
+  /// Defaults to `true` — sensitive values show as `••••••••`.
+  bool get redactSensitiveData => _redactSensitiveData;
   BlackBoxTrigger get trigger => _trigger;
   List<BlackBoxHttpAdapter> get httpAdapters =>
       List.unmodifiable(_httpAdapters);
@@ -93,13 +117,20 @@ class BlackBox {
   /// Initialise BlackBox. Call once in [main].
   static void setup({
     List<BlackBoxHttpAdapter> httpAdapters = const [],
+    List<BlackBoxSocketAdapter> socketAdapters = const [],
     BlackBoxLogAdapter? logAdapter,
-    BlackBoxFlagAdapter? flagAdapter,
+    List<BlackBoxStorageAdapter> storageAdapters = const [],
     BlackBoxTrigger trigger = const BlackBoxTrigger.shake(),
     bool? enabled,
+
+    /// When `true` (default), keys matching sensitive patterns
+    /// (password, token, secret, etc.) are redacted in the Storage panel.
+    /// Set to `false` only for internal/dev-only builds.
+    bool redactSensitiveData = true,
   }) {
     final dk = _instance;
     dk._enabled = enabled ?? kDebugMode;
+    dk._redactSensitiveData = redactSensitiveData;
     dk._trigger = trigger;
 
     if (!dk._enabled) return;
@@ -134,9 +165,15 @@ class BlackBox {
       }
     });
 
-    // ── feature flags ──────────────────────────────────────────────────
-    final fa = flagAdapter ?? LocalFlagAdapter(flags: {});
-    dk.flagStore.register(fa.flags);
+    // ── Storage adapters ────────────────────────────────────────────────
+    dk._storageAdapters.addAll(storageAdapters);
+
+    // ── Socket adapters ─────────────────────────────────────────────────
+    for (final adapter in socketAdapters) {
+      adapter.onEventCallback = dk.socketStore.onEvent;
+      adapter.attach();
+      dk._socketAdapters.add(adapter);
+    }
 
     // ── FPS monitor ────────────────────────────────────────────────────
     dk.fpsMonitor.start();
@@ -224,6 +261,80 @@ class BlackBox {
         name: 'BlackBox');
   }
 
+  // ── Rebuild tracking ────────────────────────────────────────────────
+
+  /// Start automatic rebuild tracking for ALL widgets.
+  /// Uses Flutter's `debugPrintRebuildDirtyWidgets` (debug mode only).
+  static void startRebuildTracking() {
+    if (!kDebugMode) return;
+    final dk = _instance;
+    dk._autoRebuildTracking = true;
+    debugPrintRebuildDirtyWidgets = true;
+
+    dk._originalDebugPrint = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) {
+      if (message != null && message.contains('rebuilt')) {
+        // Flutter's format: "WidgetName(dirty)" or similar
+        final name = _parseWidgetName(message);
+        if (name != null) {
+          dk.rebuildStore.record(name);
+        }
+      }
+      dk._originalDebugPrint?.call(message ?? '', wrapWidth: wrapWidth ?? 100);
+    };
+  }
+
+  /// Stop automatic rebuild tracking.
+  static void stopRebuildTracking() {
+    final dk = _instance;
+    dk._autoRebuildTracking = false;
+    debugPrintRebuildDirtyWidgets = false;
+    if (dk._originalDebugPrint != null) {
+      debugPrint = dk._originalDebugPrint!;
+      dk._originalDebugPrint = null;
+    }
+  }
+
+  static String? _parseWidgetName(String message) {
+    // Flutter debug output looks like:
+    // "MyWidget(dirty, state: _MyWidgetState#abc12)"
+    final match = RegExp(r'^(\w+)\(').firstMatch(message.trim());
+    if (match != null) {
+      final name = match.group(1)!;
+      // Filter out framework-internal widgets
+      if (name.startsWith('_') || name == 'Builder' || name == 'MediaQuery') {
+        return null;
+      }
+      return name;
+    }
+    return null;
+  }
+
+  // ── Socket IO ──────────────────────────────────────────────────────────
+
+  /// Manually log a socket event.
+  ///
+  /// Prefer using [BlackBoxSocketAdapter] (e.g. `SocketIOBlackBoxAdapter`)
+  /// which captures events automatically without code changes.
+  ///
+  /// This method is provided as a **fallback** for socket libraries that
+  /// don't have a built-in adapter yet.
+  static void logSocketEvent(
+    String eventName,
+    dynamic data, {
+    SocketDirection direction = SocketDirection.incoming,
+  }) {
+    if (!_instance._enabled) return;
+    final event = SocketEvent(
+      id: 'soc_${DateTime.now().microsecondsSinceEpoch}',
+      eventName: eventName,
+      data: data,
+      timestamp: DateTime.now(),
+      direction: direction,
+    );
+    _instance.socketStore.onEvent(event);
+  }
+
   // ── Network mocking ───────────────────────────────────────────────────
 
   /// Register a mock rule. Active immediately — no restart needed.
@@ -240,18 +351,6 @@ class BlackBox {
   }
 
   static void removeMock(String id) => _instance.mockEngine.removeRule(id);
-
-  // ── Feature flags ─────────────────────────────────────────────────────
-
-  /// Read the current value of a feature flag.
-  ///
-  /// Returns the override set in the overlay panel if present,
-  /// otherwise the default from your [BlackBoxFlagAdapter].
-  static T flag<T>(String key) => _instance.flagStore.value<T>(key);
-
-  /// Stream of value changes for a specific flag.
-  static Stream<T> flagStream<T>(String key) =>
-      _instance.flagStore.streamFor<T>(key);
 
   // ── Overlay control ───────────────────────────────────────────────────
 
@@ -278,7 +377,6 @@ class BlackBox {
       timestamp: DateTime.now(),
       appInfo: await _appInfo(),
       deviceInfo: await _getDeviceInfo(),
-      activeFlags: dk.flagStore.toJson(),
       userJourney: dk.journeyStore.numberedSteps,
       failedRequests: dk.networkStore.entries
           .where((e) => e.response != null && e.response!.statusCode >= 400)
@@ -289,6 +387,7 @@ class BlackBox {
           .toList(),
       logs: dk.logStore.toJson(),
       networkRequests: dk.networkStore.toJson(),
+      socketEvents: dk.socketStore.toJson(),
       crashes: dk.crashStore.toJson(),
       screenshotPngBytes: screenshotPngBytes,
       notes: notes,
@@ -311,13 +410,20 @@ class BlackBox {
     for (final a in dk._httpAdapters) {
       a.detach();
     }
+    for (final a in dk._socketAdapters) {
+      a.detach();
+    }
     dk.fpsMonitor.dispose();
     dk.logStore.dispose();
     dk.networkStore.dispose();
-    dk.flagStore.dispose();
     dk.crashStore.dispose();
+    dk.socketStore.dispose();
+    dk.rebuildStore.dispose();
     dk.journeyStore.clear();
     dk._httpAdapters.clear();
+    dk._socketAdapters.clear();
+    dk._storageAdapters.clear();
+    BlackBox.stopRebuildTracking();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────

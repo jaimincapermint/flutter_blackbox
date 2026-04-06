@@ -1,24 +1,33 @@
-// Single import — everything comes from one package now
 import 'package:flutter_blackbox/flutter_blackbox.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
 
 void main() {
   BlackBox.setup(
-    httpAdapters: [DioBlackBoxAdapter(dio)], // Option A — Dio
-    // httpAdapters: [HttpBlackBoxAdapter()],        // Option B — http package
+    // ── Network — observe silently via Dio interceptors ──────────────
+    httpAdapters: [DioBlackBoxAdapter(dio)],
+
+    // ── Logging — auto-capture all debugPrint output ─────────────────
     logAdapter: PrintLogAdapter(),
-    flagAdapter: LocalFlagAdapter(flags: {
-      'new_checkout': const FlagConfig(defaultValue: false, group: 'Checkout'),
-      'show_banner': const FlagConfig(defaultValue: true, group: 'Marketing'),
-    }),
+
+    // ── Storage — inspect SharedPreferences (add more adapters here) ─
+    storageAdapters: [SharedPrefsStorageAdapter()],
+
+    // ── Privacy — sensitive keys auto-redacted (default: true) ───────
+    redactSensitiveData: true,
+
+    // ── Trigger — floating button for easy access ────────────────────
     trigger: const BlackBoxTrigger.floatingButton(),
+
+    // ── Only active in debug mode ────────────────────────────────────
     enabled: kDebugMode,
   );
 
+  // ── Mock an API endpoint ────────────────────────────────────────────
   BlackBox.mock(
     pattern: '/api/orders',
     method: 'GET',
@@ -33,8 +42,9 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'devkit example',
+        title: 'BlackBox Example',
         theme: ThemeData.dark(useMaterial3: true),
+        navigatorObservers: [BlackBox.journeyObserver],
         home: const HomeScreen(),
       );
 }
@@ -44,38 +54,137 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('devkit example')),
+      appBar: AppBar(title: const Text('BlackBox Example')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _Tile('Log info',
-              () => BlackBox.log('hello', level: LogLevel.info, tag: 'Home')),
-          _Tile('Log error',
-              () => BlackBox.log('failed', level: LogLevel.error, tag: 'Pay')),
-          _Tile('debugPrint', () => debugPrint('[Auth] token refreshed')),
-          const _Tile('Open BlackBox', BlackBox.open),
-          _Tile('GET /api/orders (mock)', () async {
-            try {
-              await dio.get<dynamic>('/api/orders');
-            } catch (_) {}
-          }),
+          // ── Logging demos ─────────────────────────────────────────
+          const _Section('Logging'),
+          _Tile(
+            'Log info',
+            Icons.info_outline,
+            () => BlackBox.log('User opened home',
+                level: LogLevel.info, tag: 'Home'),
+          ),
+          _Tile(
+            'Log error',
+            Icons.error_outline,
+            () => BlackBox.log('Payment failed',
+                level: LogLevel.error,
+                tag: 'Payment',
+                data: {'orderId': '12345'}),
+          ),
+          _Tile(
+            'debugPrint (auto-captured)',
+            Icons.print,
+            () => debugPrint('[Auth] token refreshed successfully'),
+          ),
+
+          // ── Network demos ─────────────────────────────────────────
+          const SizedBox(height: 16),
+          const _Section('Network'),
+          _Tile(
+            'GET /api/orders (mocked)',
+            Icons.cloud_download,
+            () async {
+              try {
+                await dio.get<dynamic>('/api/orders');
+              } catch (_) {}
+            },
+          ),
+
+          // ── Storage demos ─────────────────────────────────────────
+          const SizedBox(height: 16),
+          const _Section('Storage'),
+          _Tile(
+            'Write sample preferences',
+            Icons.save,
+            () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('username', 'john_doe');
+              await prefs.setBool('dark_mode', true);
+              await prefs.setInt('login_count', 42);
+              await prefs.setString('auth_token', 'eyJhbGciOiJIUzI1NiJ9...');
+              await prefs.setString('user_password_hash', 'bcrypt\$2b\$12...');
+              await prefs.setString('app_version', '2.1.0');
+              debugPrint('Sample preferences written — check Storage tab');
+            },
+          ),
+
+          // ── Rebuild tracking demos ────────────────────────────────
+          const SizedBox(height: 16),
+          const _Section('Rebuild Tracking'),
+          const _Tile(
+            'Start auto-tracking',
+            Icons.visibility,
+            BlackBox.startRebuildTracking,
+          ),
+          const _Tile(
+            'Stop auto-tracking',
+            Icons.visibility_off,
+            BlackBox.stopRebuildTracking,
+          ),
+
+          // ── Manual rebuild tracker example ────────────────────────
+          // This widget tracks its own rebuild count
+          RebuildTracker(
+            label: 'ExampleCard',
+            child: _Tile(
+              'I am tracked by RebuildTracker',
+              Icons.refresh,
+              () {
+                // Force a rebuild to see the count increase
+                (context as Element).markNeedsBuild();
+              },
+            ),
+          ),
+
+          // ── Overlay control ───────────────────────────────────────
+          const SizedBox(height: 16),
+          const _Section('Overlay'),
+          const _Tile('Open BlackBox', Icons.bug_report, BlackBox.open),
         ],
       ),
     );
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile(this.title, this.onTap);
+// ─────────────────────────────────────────────────────────────────────────────
+// UI Components
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Section extends StatelessWidget {
+  const _Section(this.title);
   final String title;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.white.withValues(alpha: 0.4),
+            letterSpacing: 1.2,
+          ),
+        ),
+      );
+}
+
+class _Tile extends StatelessWidget {
+  const _Tile(this.title, this.icon, this.onTap);
+  final String title;
+  final IconData icon;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Card(
-        margin: const EdgeInsets.only(bottom: 8),
+        margin: const EdgeInsets.only(bottom: 6),
         child: ListTile(
-          title: Text(title),
-          trailing: const Icon(Icons.chevron_right),
+          leading: Icon(icon, size: 20),
+          title: Text(title, style: const TextStyle(fontSize: 13)),
+          trailing: const Icon(Icons.chevron_right, size: 16),
           onTap: onTap,
+          dense: true,
         ),
       );
 }

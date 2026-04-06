@@ -1,5 +1,5 @@
-name: devkit_example
-description: Example app for devkit.
+name: blackbox_example
+description: Example app for blackbox.
 publish_to: none
 
 environment:
@@ -10,5 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_blackbox:
-    path: ..        # points to the devkit folder above
+    path: ..        # points to the blackbox folder above
   dio: ^5.0.0
+  shared_preferences: ^2.5.0

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 
-import '../../devkit.dart';
+import '../../blackbox.dart';
 import 'journey_event.dart';
 
 mixin BlackBoxGestureObserver on GestureBinding {

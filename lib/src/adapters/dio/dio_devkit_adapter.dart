@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/network/network_request.dart';
 import '../../core/network/network_response.dart';
-import '../../devkit.dart';
+import '../../blackbox.dart';
 import '../http/devkit_http_adapter.dart';
 
 /// Connects a [Dio] instance to BlackBox's network inspector and mock engine.

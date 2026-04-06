@@ -8,7 +8,7 @@ class BlackBoxReport {
     required this.timestamp,
     required this.appInfo,
     required this.deviceInfo,
-    required this.activeFlags,
+    required this.socketEvents,
     required this.userJourney,
     required this.failedRequests,
     required this.logs,
@@ -24,7 +24,7 @@ class BlackBoxReport {
   final DateTime timestamp;
   final Map<String, String> appInfo;
   final BlackBoxDeviceInfo deviceInfo;
-  final Map<String, dynamic> activeFlags;
+  final List<Map<String, dynamic>> socketEvents;
   final List<String> userJourney;
   final List<Map<String, dynamic>> failedRequests;
   final List<Map<String, dynamic>> logs;
@@ -43,7 +43,7 @@ class BlackBoxReport {
         'timestamp': timestamp.toIso8601String(),
         'app': appInfo,
         'device': deviceInfo.toJson(),
-        'activeFlags': activeFlags,
+        'socketEvents': socketEvents,
         'userJourney': userJourney,
         'failedRequests': failedRequests,
         'logs': logs,
@@ -99,8 +99,10 @@ ${notes != null && notes!.isNotEmpty ? '### Notes\n$notes\n' : ''}
     deviceInfo.toJson().forEach((k, v) => buf.writeln('$k: $v'));
     buf
       ..writeln()
-      ..writeln('--- Active Flags ---');
-    activeFlags.forEach((k, v) => buf.writeln('$k: $v'));
+      ..writeln('--- Socket IO (${socketEvents.length}) ---');
+    for (final e in socketEvents) {
+      buf.writeln('[${e['direction']}] ${e['timestamp']} ${e['eventName']}');
+    }
     buf
       ..writeln()
       ..writeln('--- Logs (${logs.length}) ---');

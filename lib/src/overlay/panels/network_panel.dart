@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import '../../core/network/network_store.dart';
 import '../../core/network/network_response.dart';
 import '../../core/network/network_throttle.dart';
-import '../../devkit.dart';
+import '../../blackbox.dart';
 import '../widgets/devkit_colors.dart';
 import '../widgets/empty_state.dart';
 

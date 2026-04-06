@@ -3,12 +3,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../devkit.dart';
+import '../blackbox.dart';
 import 'devkit_trigger.dart';
 import 'panels/log_panel.dart';
 import 'panels/network_panel.dart';
 import 'panels/performance_panel.dart';
-import 'panels/flags_panel.dart';
+import 'panels/rebuild_panel.dart';
+import 'panels/socket_panel.dart';
+import 'panels/storage_panel.dart';
 import 'panels/device_panel.dart';
 import 'panels/qa_panel.dart';
 
@@ -212,7 +214,9 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
     (icon: Icons.wifi, label: 'Network'),
     (icon: Icons.article_outlined, label: 'Logs'),
     (icon: Icons.speed, label: 'Perf'),
-    (icon: Icons.flag_outlined, label: 'Flags'),
+    (icon: Icons.refresh, label: 'Rebuilds'),
+    (icon: Icons.storage_outlined, label: 'Storage'),
+    (icon: Icons.power, label: 'Socket IO'),
     (icon: Icons.phone_android, label: 'Device'),
     (icon: Icons.bug_report_outlined, label: 'QA'),
   ];
@@ -254,7 +258,9 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
                       const NetworkPanel(),
                       const LogPanel(),
                       const PerformancePanel(),
-                      const FlagsPanel(),
+                      const RebuildPanel(),
+                      const StoragePanel(),
+                      const SocketPanel(),
                       const DevicePanel(),
                       QaPanel(captureScreen: widget.captureScreen),
                     ],
