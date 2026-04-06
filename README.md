@@ -1,121 +1,221 @@
-# Flutter Blackbox 🐞
+# Flutter BlackBox 🐞
 
 [![pub package](https://img.shields.io/pub/v/flutter_blackbox.svg)](https://pub.dev/packages/flutter_blackbox)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-An all-in-one, zero-dependency **In-App Debug & QA Overlay** for Flutter. One unified package to monitor network requests, mock responses, trace user journeys, catch crashes, track performance, and generate comprehensive Markdown QA reports on the fly. 
+An all-in-one **In-App Debug & QA Overlay** for Flutter. One unified package to monitor network requests, inspect storage, track widget rebuilds, observe Socket.IO events, catch crashes, track performance, and generate comprehensive Markdown QA reports — all without modifying your existing code.
 
-> **Zero Runtime Cost**: Designed exclusively for Debug and Profile modes. Include it securely knowing it compiles out of your Release builds (`kReleaseMode`).
+> **Zero Runtime Cost**: Designed exclusively for Debug and Profile modes. All debug code compiles out of Release builds via `kDebugMode`.
+
+> **Observe Only, Never Modify**: BlackBox hooks into your existing libraries (Dio, http, Socket.IO, SharedPreferences) through their built-in extension points. Your trusted code stays completely untouched.
 
 ---
 
 ## 🚀 Features
 
-- **🌐 Network Inspector:** Real-time interception of HTTP/Dio requests. View headers, payloads, status codes, and precise error types (Timeout, Connection, Server, Format).
-- **🎛 Mocking & Throttling:** Intercept and replace API calls with local JSON responses on the fly. Simulate slow networks using the built-in Delay Throttle slider.
-- **🐛 Crash & Exception Logger:** Automatically catches framework layout errors, asynchronous exceptions, and unhandled crashes, storing them for QA.
-- **🗺️ User Journey Tracking:** Automatically logs Route changes and UI pointer inputs to reconstruct exactly what the tester did before a crash.
-- **📋 Automated QA Reports:** One-tap export to generate pristine Markdown bug reports containing the active screen snapshot, device state, feature flags, journey history, network logs, and error stack traces.
-- **⚡ Performance Monitor:** Live FPS graphs, memory alerts, and jank detection warnings.
-- **⚙️ Feature Flags:** Built-in dynamic toggles to turn experimental UI/logic branches on or off without restarting.
+| Panel | Description |
+|-------|-------------|
+| **🌐 Network** | Real-time HTTP/Dio request interception. Headers, payloads, status codes, error types (Timeout, Connection, Server). |
+| **🎛 Mocking** | Intercept and replace API calls with local JSON responses. Simulate slow networks with throttle slider. |
+| **📋 Logs** | Auto-captures all `debugPrint` and `print` output. Manual logging with levels and tags. |
+| **⚡ Performance** | Live FPS graph, jank detection, memory alerts. |
+| **🔄 Rebuilds** | Track widget rebuild counts — auto-detect ALL rebuilds or wrap specific widgets. Heat-colored ranking. |
+| **💾 Storage** | Inspect, search, edit, and delete key-value pairs from SharedPreferences, GetStorage, Hive, or any storage. **Sensitive data auto-redacted.** |
+| **🔌 Socket IO** | Auto-capture all incoming Socket.IO events via adapter. Zero code changes. |
+| **📱 Device** | Device info, OS version, app version, connectivity status. |
+| **🐛 Crashes** | Auto-catches framework errors, async exceptions, and unhandled crashes. |
+| **🗺️ Journey** | Route changes and UI interactions logged to reconstruct what happened before a crash. |
+| **📝 QA Reports** | One-tap Markdown reports with screenshots, device state, journey, network logs, and stack traces. |
 
 ---
 
 ## 📦 Installation
 
-Add `flutter_blackbox` to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
-  flutter_blackbox: ^0.1.0
+  flutter_blackbox: ^0.1.4
 ```
-
-*Note: BlackBox bundles native Http and Dio adapters automatically—no companion packages are needed!*
 
 ---
 
-## 🛠 Setup & Usage
-
-Initializing BlackBox requires exactly two lines of code.
+## 🛠 Quick Start
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_blackbox/flutter_blackbox.dart';
 
 void main() {
-  // 1. Initialize the singleton
-  BlackBox.setup(enabled: !kReleaseMode);
-
-  runApp(
-    // 2. Wrap your root app to supply the floating panels
-    BlackBoxOverlay(
-      child: const MyApp(),
-    ),
-  );
+  BlackBox.setup(enabled: kDebugMode);
+  runApp(BlackBoxOverlay(child: const MyApp()));
 }
 ```
 
-### 1. Network Integrations
+That's it — shake your device (or use a trigger) to open the overlay.
 
-BlackBox supports seamless integration into your existing networking stack. 
+---
 
-**Using Dio:**
+## 🌐 Network Adapters
+
+BlackBox **observes** your network calls silently — no changes to your API code.
+
+### Dio (recommended)
+
 ```dart
 final dio = Dio();
 
 BlackBox.setup(
   httpAdapters: [DioBlackBoxAdapter(dio)],
-  enabled: kDebugMode,
 );
+
+// Use dio exactly as before — BlackBox observes via interceptors
+final response = await dio.get('/api/users');
 ```
 
-**Using the generic Http package:**
-Replace standard `http.Client()` invocations with `BlackBoxHttpClient()`:
+### http package
+
+```dart
+final client = http.Client();
+
+BlackBox.setup(
+  httpAdapters: [HttpBlackBoxAdapter(client)],
+);
+
+// Use client exactly as before — BlackBox observes silently
+final response = await client.get(Uri.parse('https://api.example.com'));
+```
+
+---
+
+## 🔌 Socket.IO Adapter
+
+Auto-captures **all incoming** Socket.IO events with zero code changes:
+
+```dart
+final socket = io.io('http://localhost:3000');
+
+BlackBox.setup(
+  socketAdapters: [SocketIOBlackBoxAdapter(socket)],
+);
+
+// Your existing socket code — completely untouched:
+socket.on('message', (data) => handleMessage(data));
+socket.on('notification', (data) => showNotification(data));
+// ↑ All events appear in the Socket IO panel automatically
+```
+
+---
+
+## 💾 Storage Inspector
+
+Inspect any key-value storage — SharedPreferences, GetStorage, Hive, FlutterSecureStorage, etc.
+
+### Built-in SharedPreferences adapter
+
 ```dart
 BlackBox.setup(
-  httpAdapters: [HttpBlackBoxAdapter()],
-  enabled: kDebugMode,
+  storageAdapters: [SharedPrefsStorageAdapter()],
 );
-
-final client = BlackBoxHttpClient();
-final response = await client.get(Uri.parse('https://api.example.com/data'));
 ```
 
-### 2. Feature Flags
-
-Declare flag templates during setup and listen to realtime updates in your UI:
+### Custom adapter (GetStorage, Hive, etc.)
 
 ```dart
+class GetStorageAdapter extends BlackBoxStorageAdapter {
+  final GetStorage _box;
+  GetStorageAdapter(this._box);
+
+  @override String get name => 'GetStorage';
+  @override Future<Map<String, dynamic>> readAll() async { ... }
+  @override Future<void> write(String key, dynamic value) async => _box.write(key, value);
+  @override Future<void> delete(String key) async => _box.remove(key);
+  @override Future<void> clear() async => _box.erase();
+}
+
+// Use multiple adapters — each gets its own tab
 BlackBox.setup(
-  flagAdapter: LocalFlagAdapter(flags: {
-    'new_checkout_flow': FlagConfig(defaultValue: false, group: 'UI'),
-    'api_url': FlagConfig(defaultValue: 'https://api.staging.com', group: 'Network'),
-  }),
+  storageAdapters: [
+    SharedPrefsStorageAdapter(),
+    GetStorageAdapter(GetStorage()),
+  ],
 );
-
-// In your Widgets: Read statically...
-final isNewCheckout = BlackBox.flag<bool>('new_checkout_flow');
-
-// ...or rebuild dynamically when toggled directly from the BlackBox panel!
-BlackBox.flagStream<bool>('new_checkout_flow').listen((value) => setState(() {}));
 ```
 
-### 3. Emitting Custom Logs
+### 🔒 Privacy & Sensitive Data
 
-If you'd like to trace explicit debug messages through the BlackBox logger ecosystem:
+**By default, sensitive keys are auto-redacted.** Keys matching patterns like `password`, `token`, `secret`, `jwt`, `pin`, `auth`, etc. show as `••••••••` — can't be copied or edited.
 
 ```dart
-BlackBox.log('User tapped the checkout button', level: LogLevel.info, tag: 'Checkout');
+// Default: sensitive data is hidden (recommended)
+BlackBox.setup(
+  storageAdapters: [SharedPrefsStorageAdapter()],
+  // redactSensitiveData: true  ← default
+);
+
+// Opt-in to show everything (internal dev builds only)
+BlackBox.setup(
+  storageAdapters: [SharedPrefsStorageAdapter()],
+  redactSensitiveData: false,
+);
 ```
-*(By default, BlackBox automatically captures all `debugPrint` and `print` outputs into its Log Panel).*
 
-### 4. Mocking APIs
+**Customize per adapter:**
 
-Turn specific network routes into completely offline simulations instantly. You can enable or disable these mock engines on the fly from the Network Panel.
+```dart
+class MyAdapter extends BlackBoxStorageAdapter {
+  @override
+  List<String> get sensitiveKeyPatterns => [
+    ...BlackBoxStorageAdapter.defaultSensitivePatterns,
+    'credit_card',    // your custom patterns
+    'bank_account',
+  ];
+}
+```
+
+---
+
+## 🔄 Widget Rebuild Tracker
+
+Track which widgets rebuild the most — find performance bottlenecks.
+
+### Automatic mode (recommended)
+
+Toggle "AUTO ON" in the Rebuilds panel — tracks ALL widget rebuilds automatically using Flutter's `debugPrintRebuildDirtyWidgets`. Zero code changes needed.
+
+```dart
+// Or enable programmatically:
+BlackBox.startRebuildTracking();
+```
+
+### Manual mode (specific widgets)
+
+```dart
+// Wrap specific widgets for granular tracking
+RebuildTracker(
+  label: 'ProductCard',
+  child: ProductCard(),
+)
+```
+
+> **Release Safety**: `RebuildTracker` uses `kDebugMode` (compile-time constant) — the entire tracking code is eliminated by Dart's tree-shaker in release builds. Zero overhead, zero app size impact.
+
+---
+
+## 📋 Custom Logging
+
+```dart
+BlackBox.log('User tapped checkout', level: LogLevel.info, tag: 'Checkout');
+BlackBox.log('Payment failed', level: LogLevel.error, tag: 'Payment', data: {'orderId': '123'});
+```
+
+> BlackBox automatically captures all `debugPrint` and `print` output — no manual logging required for those.
+
+---
+
+## 🎛 API Mocking
 
 ```dart
 BlackBox.mock(
-  pattern: '/api/v1/user/profile', // String or RegExp matching
+  pattern: '/api/v1/user/profile',
   method: 'GET',
   response: MockResponse(
     statusCode: 200,
@@ -123,31 +223,75 @@ BlackBox.mock(
   ),
 );
 ```
-*(Tip: Tap the "Speed" icon in the Network Panel to add simulated artificial Throttle Delays up to 5000ms to your mocks!)*
 
 ---
 
 ## 🎮 Panel Triggers
 
-How do you open BlackBox on a physical device once installed? You dictate the trigger gesture!
-
 ```dart
 BlackBox.setup(
-  trigger: BlackBoxTrigger.shake(),                         // Open on physically shaking the phone
-  // trigger: BlackBoxTrigger.hotkey(LogicalKeyboardKey.f12),  // Desktop/Web F12 shortcut
-  // trigger: BlackBoxTrigger.floatingButton(),                // A persistent drag-and-drop floating badge
+  trigger: BlackBoxTrigger.shake(),                          // Shake device
+  // trigger: BlackBoxTrigger.hotkey(LogicalKeyboardKey.f12), // Desktop F12
+  // trigger: BlackBoxTrigger.floatingButton(),               // Floating button
 );
 ```
 
-## 📝 The QA Markdown Report
+---
 
-The most powerful feature of BlackBox natively exists in its `"QA"` tab.
-If a tester taps the **QA** tab, they can:
-1. Provide a Bug Name and assign a `BugSeverity` marker.
-2. Tap "Generate Report".
-3. BlackBox compiles a robust `toMarkdown()` dossier that formats their OS, device physical DPI, network state, all their past tap events (User Journey), any captured unhandled Dart crashes, and failed network fetches.
-4. One Tap `"Copy"` pastes this beautifully formatted report onto their clipboard, perfectly designed for instantly pasting into GitHub Issues, Jira, or Slack.
+## ⚙️ Full Setup Example
+
+```dart
+import 'package:flutter_blackbox/flutter_blackbox.dart';
+
+final dio = Dio();
+
+void main() {
+  BlackBox.setup(
+    // Network — observe silently
+    httpAdapters: [DioBlackBoxAdapter(dio)],
+
+    // Socket — auto-capture incoming events
+    // socketAdapters: [SocketIOBlackBoxAdapter(socket)],
+
+    // Storage — inspect key-value stores
+    storageAdapters: [SharedPrefsStorageAdapter()],
+
+    // Logging
+    logAdapter: PrintLogAdapter(),
+
+    // Privacy — sensitive keys auto-redacted (default: true)
+    redactSensitiveData: true,
+
+    // Trigger
+    trigger: const BlackBoxTrigger.floatingButton(),
+
+    // Only in debug mode
+    enabled: kDebugMode,
+  );
+
+  runApp(const BlackBoxOverlay(child: MyApp()));
+}
+```
+
+---
+
+## 📝 QA Reports
+
+Tap the **QA** tab → provide a bug name → tap **Generate Report**. BlackBox compiles a Markdown report with:
+
+- 📸 Screenshot
+- 📱 Device info (OS, model, DPI, connectivity)
+- 🗺️ User journey (routes + taps)
+- 🌐 Failed network requests
+- 🔌 Socket events
+- 📋 Recent logs
+- 🐛 Crash stack traces
+
+One tap **Copy** → paste directly into GitHub Issues, Jira, or Slack.
+
+---
 
 ## 📄 License
 
 MIT.
+# flutter_blackbox
