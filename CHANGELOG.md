@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2] - 2026-04-06
+
+### Fixed
+- Added CHANGELOG updates and minor version bumps for successful pub.dev publication.
+
+## [0.2.1] - 2026-04-06
+
+### Added
+- **`ignoredRebuildWidgets` config** in `BlackBox.setup()` to allow overriding and muting noisy custom 3rd-party widgets in the Rebuild tab.
+- **Smart Noise Filters** hardcoded over 100+ native Flutter framework base widgets (`Text`, `AutomaticKeepAlive`, `Container`, etc) and 60fps animators (`LinearProgressIndicator`) from tracking to prevent noise.
+
+### Fixed
+- Corrected regex string parsing for Flutter framework's raw rebuild log output (`Building`/`Rebuilding`) so Rebuild Tracking accurately measures widget rebuilds rather than staying at zero.
+- Rebuild Tracker console spam fixed. Intercepted framework logs are now securely routed to the UI tab while completely muted from terminal output for cleaner logging.
+- Fixed infinite rendering loops where `BlackBoxOverlay` and `RebuildTrackerWidget` recursively logged themselves in the Rebuild store.
+
 ## [0.2.0] - 2026-03-24
 
 ### Added
