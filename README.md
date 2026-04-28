@@ -378,6 +378,120 @@ One tap **Copy** → paste directly into GitHub Issues, Jira, or Slack.
 
 ---
 
+## 🔄 Migration Guide
+
+### Upgrading from v0.2.x → v0.3.0
+
+#### 1. Rename: `devkit_*` → `blackbox_*`
+
+All classes, files, and observers were renamed from `devkit` to `blackbox` branding.
+
+| v0.2.x (old) | v0.3.0 (new) |
+|---|---|
+| `DevkitOverlay` | `BlackBoxOverlay` |
+| `DevkitTrigger` | `BlackBoxTrigger` |
+| `DevKit.setup(...)` | `BlackBox.setup(...)` |
+| `DevkitNavigatorObserver` | `BlackBoxNavigatorObserver` |
+| `DevkitGestureObserver` | `BlackBoxGestureObserver` |
+| `DevkitReport` | `BlackBoxReport` |
+| `DevkitLogAdapter` | `BlackBoxLogAdapter` |
+| `PrintLogAdapter` | `PrintLogAdapter` ✅ unchanged |
+
+**Quick find & replace in your project:**
+```
+DevKit.    →  BlackBox.
+Devkit     →  BlackBox
+devkit_    →  blackbox_
+```
+
+---
+
+#### 2. Adapter imports — old barrel files removed
+
+In v0.2.x, adapters were imported from barrel files inside the package:
+
+```dart
+// ❌ v0.2.x — these files no longer exist
+import 'package:flutter_blackbox/adapters/dio.dart';
+import 'package:flutter_blackbox/adapters/http.dart';
+import 'package:flutter_blackbox/adapters/socket_io.dart';
+import 'package:flutter_blackbox/adapters/shared_prefs.dart';
+```
+
+In v0.3.0, run the CLI to generate the adapters into your own project:
+
+```bash
+dart run flutter_blackbox:init --generate
+```
+
+Then import from the generated file:
+
+```dart
+// ✅ v0.3.0 — generated into your project
+import 'blackbox_adapters.dart';
+```
+
+Your `BlackBox.setup()` call stays **exactly the same** — only the import line changes.
+
+---
+
+#### 3. Full before / after example
+
+**v0.2.x (old)**
+```dart
+import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'package:flutter_blackbox/adapters/dio.dart';
+import 'package:flutter_blackbox/adapters/shared_prefs.dart';
+
+void main() {
+  DevKit.setup(
+    httpAdapters: [DioBlackBoxAdapter(dio)],
+    storageAdapters: [SharedPrefsStorageAdapter()],
+    trigger: const DevkitTrigger.floatingButton(),
+    enabled: kDebugMode,
+  );
+  runApp(const DevkitOverlay(child: MyApp()));
+}
+```
+
+**v0.3.0 (new)**
+```dart
+import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'blackbox_adapters.dart'; // dart run flutter_blackbox:init --generate
+
+void main() {
+  BlackBox.setup(
+    httpAdapters: [DioBlackBoxAdapter(dio)],
+    storageAdapters: [SharedPrefsStorageAdapter()],
+    trigger: const BlackBoxTrigger.floatingButton(),
+    enabled: kDebugMode,
+  );
+  runApp(const BlackBoxOverlay(child: MyApp()));
+}
+```
+
+> **Navigator observer** if you use it:
+> ```dart
+> // v0.2.x
+> navigatorObservers: [DevKit.journeyObserver]
+>
+> // v0.3.0
+> navigatorObservers: [BlackBox.journeyObserver]
+> ```
+
+---
+
+#### 4. Migration checklist
+
+- [ ] Run `dart run flutter_blackbox:init --generate` to create `lib/blackbox_adapters.dart`
+- [ ] Replace all `DevKit.` → `BlackBox.`
+- [ ] Replace all `Devkit` class names → `BlackBox` equivalents (see table above)
+- [ ] Replace adapter imports with `import 'blackbox_adapters.dart';`
+- [ ] Replace `DevkitOverlay` → `BlackBoxOverlay` in `runApp()`
+- [ ] Run `dart analyze` to catch any remaining references
+
+---
+
 ## 📄 License
 
 MIT.
