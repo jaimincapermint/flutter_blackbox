@@ -16,13 +16,13 @@ dependencies:
   package_info_plus: ^9.0.0
   device_info_plus: ^12.3.0
   connectivity_plus: ^7.0.0
-  # ── Optional client adapters (in lib/ so must be in dependencies) ────
+
+dev_dependencies:
+  # ── Optional adapter packages — used only for testing CLI templates ───
   dio: ^5.4.0
   http: ^1.0.0
   shared_preferences: ^2.5.0
   socket_io_client: ^3.0.2
-
-dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0

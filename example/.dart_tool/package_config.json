@@ -116,12 +116,6 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "logging",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/logging-1.3.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.4"
-    },
-    {
       "name": "material_color_utilities",
       "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/material_color_utilities-0.11.1",
       "packageUri": "lib/",
@@ -246,18 +240,6 @@
       "rootUri": "file:///Users/capermint/Documents/FlutterSdk/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
-    },
-    {
-      "name": "socket_io_client",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/socket_io_client-3.1.4",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "socket_io_common",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/socket_io_common-3.1.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
     },
     {
       "name": "source_span",

@@ -65,10 +65,12 @@ export 'src/adapters/log/print_log_adapter.dart';
 export 'src/adapters/storage/blackbox_storage_adapter.dart';
 export 'src/adapters/socket/blackbox_socket_adapter.dart';
 
-// ── Built-in adapter implementations ─────────────────────────────────────────
-// Import these separately to avoid pulling in unused dependencies:
+// ── Adapter implementations ───────────────────────────────────────────────────
+// Concrete adapters (DioBlackBoxAdapter, HttpBlackBoxAdapter, etc.) are NOT
+// shipped inside this package to keep flutter_blackbox dependency-free.
 //
-//   import 'package:flutter_blackbox/adapters/dio.dart';          // Dio
-//   import 'package:flutter_blackbox/adapters/http.dart';         // http
-//   import 'package:flutter_blackbox/adapters/socket_io.dart';    // Socket.IO
-//   import 'package:flutter_blackbox/adapters/shared_prefs.dart'; // SharedPreferences
+// Run the CLI to generate them directly into your project:
+//   dart run flutter_blackbox:init --generate
+//
+// This creates lib/blackbox_adapters.dart with only the adapters your project
+// actually needs — zero unnecessary packages installed.

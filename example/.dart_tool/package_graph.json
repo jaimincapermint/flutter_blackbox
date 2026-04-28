@@ -46,12 +46,8 @@
       "dependencies": [
         "connectivity_plus",
         "device_info_plus",
-        "dio",
         "flutter",
-        "http",
         "package_info_plus",
-        "shared_preferences",
-        "socket_io_client",
         "yaml"
       ]
     },
@@ -171,16 +167,6 @@
       "dependencies": [
         "collection",
         "meta"
-      ]
-    },
-    {
-      "name": "http",
-      "version": "1.6.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
-        "web"
       ]
     },
     {
@@ -399,6 +385,16 @@
       ]
     },
     {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
       "name": "platform",
       "version": "3.1.6",
       "dependencies": []
@@ -447,27 +443,6 @@
         "collection",
         "meta"
       ]
-    },
-    {
-      "name": "socket_io_client",
-      "version": "3.1.4",
-      "dependencies": [
-        "logging",
-        "socket_io_common",
-        "web"
-      ]
-    },
-    {
-      "name": "socket_io_common",
-      "version": "3.1.1",
-      "dependencies": [
-        "logging"
-      ]
-    },
-    {
-      "name": "logging",
-      "version": "1.3.0",
-      "dependencies": []
     }
   ],
   "configVersion": 1

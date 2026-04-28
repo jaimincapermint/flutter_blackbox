@@ -9,17 +9,17 @@
       "dependencies": [
         "connectivity_plus",
         "device_info_plus",
-        "dio",
         "flutter",
-        "http",
         "package_info_plus",
-        "shared_preferences",
-        "socket_io_client",
         "yaml"
       ],
       "devDependencies": [
+        "dio",
         "flutter_lints",
-        "flutter_test"
+        "flutter_test",
+        "http",
+        "shared_preferences",
+        "socket_io_client"
       ]
     },
     {
