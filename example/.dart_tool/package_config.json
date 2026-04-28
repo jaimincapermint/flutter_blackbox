@@ -9,7 +9,7 @@
     },
     {
       "name": "async",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/async-2.13.0",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/async-2.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -33,13 +33,13 @@
     },
     {
       "name": "connectivity_plus",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/connectivity_plus-7.0.0",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/connectivity_plus-7.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
     {
       "name": "connectivity_plus_platform_interface",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/connectivity_plus_platform_interface-2.0.1",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/connectivity_plus_platform_interface-2.1.0",
       "packageUri": "lib/",
       "languageVersion": "2.18"
     },
@@ -51,7 +51,7 @@
     },
     {
       "name": "device_info_plus",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/device_info_plus-12.3.0",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/device_info_plus-12.4.0",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -141,7 +141,7 @@
     },
     {
       "name": "package_info_plus",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/package_info_plus-9.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
@@ -195,13 +195,13 @@
     },
     {
       "name": "shared_preferences",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences-2.5.4",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences-2.5.5",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "shared_preferences_android",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.21",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -219,9 +219,9 @@
     },
     {
       "name": "shared_preferences_platform_interface",
-      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.1",
+      "rootUri": "file:///Users/capermint/.pub-cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.2",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.9"
     },
     {
       "name": "shared_preferences_web",

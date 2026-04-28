@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.2] - 2026-04-28
+
+### Fixed
+- Upgraded `connectivity_plus` to `^7.1.0` (v7.1.x migrated web implementation to
+  `package:web` instead of `dart:html`, restoring WASM compatibility on pub.dev).
+- `device_info_plus` and `package_info_plus` upgraded to latest patch via `dart pub upgrade`
+  (`12.4.0` and `9.0.1` respectively).
+
+---
+
 ## [0.3.1] - 2026-04-28
 
 ### Fixed
