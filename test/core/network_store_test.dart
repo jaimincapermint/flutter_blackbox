@@ -59,15 +59,17 @@ void main() {
       expect(store.entries, isEmpty);
     });
 
-    test('stream emits on request and response', () async {
+    test('stream emits the latest state after throttling', () async {
       final counts = <int>[];
       final sub = store.stream.listen((e) => counts.add(e.length));
 
       store.onRequest(req('r1'));
       store.onResponse(res('r1', 201));
 
-      await Future<void>.delayed(Duration.zero);
-      expect(counts, [1, 1]); // both emissions have 1 entry
+      // Wait for the 250ms throttle timer to finish
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+
+      expect(counts, [1]); // Both events throttled into a single emission
       await sub.cancel();
     });
 
@@ -96,6 +98,31 @@ void main() {
       expect(res('r', 500).isServerError, isTrue);
       expect(res('r', 503).isServerError, isTrue);
       expect(res('r', 200).isServerError, isFalse);
+    });
+    test('NetworkResponse.formattedSize', () {
+      final r1 = NetworkResponse(
+        requestId: 'r1',
+        headers: const {},
+        durationMs: 10,
+        responseSizeBytes: 500,
+      );
+      expect(r1.formattedSize, '500 B');
+
+      final r2 = NetworkResponse(
+        requestId: 'r2',
+        headers: const {},
+        durationMs: 10,
+        responseSizeBytes: 1024 + 512,
+      );
+      expect(r2.formattedSize, '1.5 KB');
+
+      final r3 = NetworkResponse(
+        requestId: 'r3',
+        headers: const {},
+        durationMs: 10,
+        responseSizeBytes: 1024 * 1024 * 2,
+      );
+      expect(r3.formattedSize, '2.0 MB');
     });
   });
 }

@@ -1,8 +1,18 @@
+/// Severity levels for categorizing log messages.
 enum LogLevel {
+  /// Extremely detailed messages, usually for low-level debugging.
   verbose,
+
+  /// Typical debug messages for development.
   debug,
+
+  /// Descriptive messages about application state changes.
   info,
+
+  /// Indicators of potential issues that are not yet errors.
   warning,
+
+  /// Error messages for failed operations and crashes.
   error;
 
   String get label => switch (this) {

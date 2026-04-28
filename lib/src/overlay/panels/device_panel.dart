@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -54,8 +52,7 @@ class DevicePanel extends StatelessWidget {
             'T:${mq.padding.top.toStringAsFixed(0)} B:${mq.padding.bottom.toStringAsFixed(0)}'),
       ],
       'app': [
-        if (!kIsWeb)
-          MapEntry('Dart version', Platform.version.split(' ').first),
+        // MapEntry('Dart version', Platform.version.split(' ').first), // Removed dart:io dependency
         MapEntry('Debug mode', kDebugMode.toString()),
         MapEntry('Profile mode', kProfileMode.toString()),
       ],

@@ -33,12 +33,94 @@ An all-in-one **In-App Debug & QA Overlay** for Flutter. One unified package to 
 
 ```yaml
 dependencies:
-  flutter_blackbox: ^0.1.4
+  flutter_blackbox: ^0.3.0
 ```
 
 ---
 
-## 🛠 Quick Start
+## 🤖 Auto-Setup CLI (recommended)
+
+BlackBox ships with a **built-in CLI tool** that scans your project and generates the correct setup code automatically — no guesswork needed.
+
+### Why?
+
+BlackBox supports multiple libraries — Dio, http, Socket.IO, SharedPreferences — each with its own adapter. Instead of reading docs to figure out which imports and adapters you need, just let the CLI detect what you're already using.
+
+### Usage
+
+```bash
+# Step 1: Add BlackBox to your project
+flutter pub add flutter_blackbox
+
+# Step 2: Auto-detect your dependencies and get setup instructions
+dart run flutter_blackbox:init
+```
+
+**What it does:** Reads your `pubspec.yaml`, checks if you use `dio`, `http`, `socket_io_client`, or `shared_preferences`, and prints the exact imports + `BlackBox.setup()` code tailored to **your** project.
+
+### Example output
+
+```
+🐞 BlackBox Init — Auto-detecting your dependencies...
+
+✅ Found dio → Dio HTTP client
+⬚  http → not found, skipping
+⬚  socket_io_client → not found, skipping
+✅ Found shared_preferences → SharedPreferences
+
+✨ 2 adapter(s) detected!
+
+┌─────────────────────────────────────────────────────────┐
+│  Add to your main.dart:                                 │
+└─────────────────────────────────────────────────────────┘
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'package:flutter_blackbox/adapters/dio.dart';
+import 'package:flutter_blackbox/adapters/shared_prefs.dart';
+
+void main() {
+  BlackBox.setup(
+    httpAdapters: [DioBlackBoxAdapter(dio)],
+    storageAdapters: [SharedPrefsStorageAdapter()],
+    trigger: const BlackBoxTrigger.floatingButton(),
+    enabled: kDebugMode,
+  );
+  runApp(const BlackBoxOverlay(child: MyApp()));
+}
+```
+
+### Generate a setup file
+
+```bash
+dart run flutter_blackbox:init --generate
+```
+
+This creates a ready-to-use `lib/blackbox_setup.dart` file with all the imports, adapters, and configuration pre-filled. Just call `setupBlackBox()` from your `main()`:
+
+```dart
+import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'blackbox_setup.dart';
+
+void main() {
+  setupBlackBox(dio: myDio);
+  runApp(const BlackBoxOverlay(child: MyApp()));
+}
+```
+
+### All CLI options
+
+| Command | Description |
+|---------|-------------|
+| `dart run flutter_blackbox:init` | Detect dependencies and print setup code |
+| `dart run flutter_blackbox:init --generate` | Also create `lib/blackbox_setup.dart` |
+| `dart run flutter_blackbox:init --help` | Show all supported libraries |
+
+---
+
+## 🛠 Quick Start (manual)
+
+If you prefer manual setup, import the core package and the adapters you need:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -61,6 +143,8 @@ BlackBox **observes** your network calls silently — no changes to your API cod
 ### Dio (recommended)
 
 ```dart
+import 'package:flutter_blackbox/adapters/dio.dart';
+
 final dio = Dio();
 
 BlackBox.setup(
@@ -74,14 +158,16 @@ final response = await dio.get('/api/users');
 ### http package
 
 ```dart
-final client = http.Client();
+import 'package:flutter_blackbox/adapters/http.dart';
+
+final adapter = HttpBlackBoxAdapter(http.Client());
 
 BlackBox.setup(
-  httpAdapters: [HttpBlackBoxAdapter(client)],
+  httpAdapters: [adapter],
 );
 
-// Use client exactly as before — BlackBox observes silently
-final response = await client.get(Uri.parse('https://api.example.com'));
+// Use the observing client for your HTTP calls:
+final response = await adapter.client.get(Uri.parse('https://api.example.com'));
 ```
 
 ---
@@ -91,6 +177,8 @@ final response = await client.get(Uri.parse('https://api.example.com'));
 Auto-captures **all incoming** Socket.IO events with zero code changes:
 
 ```dart
+import 'package:flutter_blackbox/adapters/socket_io.dart';
+
 final socket = io.io('http://localhost:3000');
 
 BlackBox.setup(
@@ -112,6 +200,8 @@ Inspect any key-value storage — SharedPreferences, GetStorage, Hive, FlutterSe
 ### Built-in SharedPreferences adapter
 
 ```dart
+import 'package:flutter_blackbox/adapters/shared_prefs.dart';
+
 BlackBox.setup(
   storageAdapters: [SharedPrefsStorageAdapter()],
 );
@@ -242,6 +332,8 @@ BlackBox.setup(
 
 ```dart
 import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'package:flutter_blackbox/adapters/dio.dart';
+import 'package:flutter_blackbox/adapters/shared_prefs.dart';
 
 final dio = Dio();
 
@@ -276,6 +368,8 @@ void main() {
 }
 ```
 
+> 💡 **Tip**: Run `dart run flutter_blackbox:init` to auto-generate this setup based on your project's dependencies.
+
 ---
 
 ## 📝 QA Reports
@@ -297,4 +391,3 @@ One tap **Copy** → paste directly into GitHub Issues, Jira, or Slack.
 ## 📄 License
 
 MIT.
-# flutter_blackbox

@@ -1,4 +1,4 @@
-/// devkit — In-app debug overlay for Flutter.
+/// Flutter BlackBox — In-app debug & QA overlay for Flutter.
 ///
 /// Single package containing the core overlay, all panels, and built-in
 /// adapters for Dio and dart:http.
@@ -13,6 +13,8 @@
 ///
 /// ## With Dio
 /// ```dart
+/// import 'package:flutter_blackbox/adapters/dio.dart';
+///
 /// BlackBox.setup(
 ///   httpAdapters: [DioBlackBoxAdapter(dio)],
 ///   enabled: kDebugMode,
@@ -21,27 +23,30 @@
 ///
 /// ## With http package
 /// ```dart
+/// import 'package:flutter_blackbox/adapters/http.dart';
+///
+/// final adapter = HttpBlackBoxAdapter(http.Client());
 /// BlackBox.setup(
-///   httpAdapters: [HttpBlackBoxAdapter()],
+///   httpAdapters: [adapter],
 ///   enabled: kDebugMode,
 /// );
-/// // Use BlackBoxHttpClient() instead of http.Client()
-/// final client = BlackBoxHttpClient();
 /// ```
-library devkit;
+library flutter_blackbox;
 
 // ── Core public API ──────────────────────────────────────────────────────────
 export 'src/blackbox.dart';
 
 // ── Overlay ──────────────────────────────────────────────────────────────────
-export 'src/overlay/devkit_overlay.dart';
-export 'src/overlay/devkit_trigger.dart';
+export 'src/overlay/blackbox_overlay.dart';
+export 'src/overlay/blackbox_trigger.dart';
 
 // ── Models ───────────────────────────────────────────────────────────────────
 export 'src/core/log/log_entry.dart';
 export 'src/core/log/log_level.dart';
 export 'src/core/crash/crash_entry.dart';
 export 'src/core/crash/crash_store.dart';
+export 'src/core/journey/journey_event.dart';
+export 'src/core/journey/journey_store.dart';
 export 'src/core/network/network_request.dart';
 export 'src/core/network/network_response.dart';
 export 'src/core/network/mock_response.dart';
@@ -49,24 +54,21 @@ export 'src/core/socket/socket_event.dart';
 export 'src/core/socket/socket_store.dart';
 export 'src/core/rebuild/rebuild_store.dart';
 export 'src/core/rebuild/rebuild_tracker_widget.dart';
-export 'src/core/report/devkit_report.dart';
+export 'src/core/performance/fps_monitor.dart';
+export 'src/core/report/blackbox_report.dart';
+export 'src/core/report/blackbox_device_info.dart';
 
-// ── Adapter interfaces ───────────────────────────────────────────────────────
-export 'src/adapters/http/devkit_http_adapter.dart';
-export 'src/adapters/log/devkit_log_adapter.dart';
+// ── Adapter interfaces (no external deps) ────────────────────────────────────
+export 'src/adapters/http/blackbox_http_adapter.dart';
+export 'src/adapters/log/blackbox_log_adapter.dart';
+export 'src/adapters/log/print_log_adapter.dart';
 export 'src/adapters/storage/blackbox_storage_adapter.dart';
 export 'src/adapters/socket/blackbox_socket_adapter.dart';
 
-// ── Built-in adapters ────────────────────────────────────────────────────────
-export 'src/adapters/log/print_log_adapter.dart';
-export 'src/adapters/storage/shared_prefs_storage_adapter.dart';
-
-// ── Dio adapter (requires dio: ">=5.0.0 <6.0.0" in your pubspec) ────────────
-export 'src/adapters/dio/dio_devkit_adapter.dart';
-
-// ── dart:http adapter (requires http: ">=1.0.0 <2.0.0" in your pubspec) ─────
-export 'src/adapters/http_client/http_devkit_adapter.dart';
-export 'src/adapters/http_client/devkit_http_client.dart';
-
-// ── Socket.IO adapter (requires socket_io_client: ">=3.0.0" in your pubspec) ─
-export 'src/adapters/socket/socket_io_blackbox_adapter.dart';
+// ── Built-in adapter implementations ─────────────────────────────────────────
+// Import these separately to avoid pulling in unused dependencies:
+//
+//   import 'package:flutter_blackbox/adapters/dio.dart';          // Dio
+//   import 'package:flutter_blackbox/adapters/http.dart';         // http
+//   import 'package:flutter_blackbox/adapters/socket_io.dart';    // Socket.IO
+//   import 'package:flutter_blackbox/adapters/shared_prefs.dart'; // SharedPreferences

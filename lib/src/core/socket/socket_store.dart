@@ -3,14 +3,21 @@ import 'dart:collection';
 
 import 'socket_event.dart';
 
+/// Manages the history of Socket.IO events.
 class SocketStore {
+  /// Creates a store with a fixed [capacity].
   SocketStore({this.capacity = 100});
 
+  /// Maximum number of events to retain in memory.
   final int capacity;
+
   final _events = ListQueue<SocketEvent>();
   final _controller = StreamController<List<SocketEvent>>.broadcast();
 
+  /// Unmodifiable list of all recorded socket events.
   List<SocketEvent> get events => List.unmodifiable(_events);
+
+  /// Broadcast stream of the event list, throttled to 250ms.
   Stream<List<SocketEvent>> get stream => _controller.stream;
 
   void onEvent(SocketEvent event) {

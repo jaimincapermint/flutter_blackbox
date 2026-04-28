@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/performance/fps_monitor.dart';
 import '../../blackbox.dart';
-import '../widgets/devkit_colors.dart';
+import '../widgets/blackbox_colors.dart';
 
 class PerformancePanel extends StatelessWidget {
   const PerformancePanel({super.key});

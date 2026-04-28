@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/socket/socket_event.dart';
 import '../../blackbox.dart';
-import '../widgets/devkit_colors.dart';
+import '../widgets/blackbox_colors.dart';
 import '../widgets/empty_state.dart';
 
 class SocketPanel extends StatefulWidget {

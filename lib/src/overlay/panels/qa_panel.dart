@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../blackbox.dart';
-import '../../core/report/devkit_report.dart';
+import '../../core/report/blackbox_report.dart';
 
 class QaPanel extends StatefulWidget {
   const QaPanel({super.key, required this.captureScreen});

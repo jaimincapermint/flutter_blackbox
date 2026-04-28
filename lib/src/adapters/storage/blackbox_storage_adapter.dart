@@ -72,7 +72,7 @@ abstract class BlackBoxStorageAdapter {
     'jwt',
   ];
 
-  /// Check if a key matches any sensitive pattern.
+  /// Checks if a key matches any sensitive pattern.
   bool isSensitiveKey(String key) {
     final lowerKey = key.toLowerCase();
     return sensitiveKeyPatterns.any(
@@ -80,15 +80,15 @@ abstract class BlackBoxStorageAdapter {
     );
   }
 
-  /// Read all currently stored key-value pairs.
+  /// Reads all currently stored key-value pairs from the backend.
   Future<Map<String, dynamic>> readAll();
 
-  /// Write (or overwrite) a value for the given key.
+  /// Writes (or overwrites) a value for the given [key].
   Future<void> write(String key, dynamic value);
 
-  /// Delete a single key.
+  /// Deletes a single [key] from storage.
   Future<void> delete(String key);
 
-  /// Delete all keys managed by this adapter.
+  /// Deletes all data managed by this adapter.
   Future<void> clear();
 }

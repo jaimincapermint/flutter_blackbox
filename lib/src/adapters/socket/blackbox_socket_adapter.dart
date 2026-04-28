@@ -34,11 +34,10 @@ abstract class BlackBoxSocketAdapter {
 
   void onEvent(SocketEvent event) => onEventCallback?.call(event);
 
-  /// Called by BlackBox when the adapter should start observing.
-  /// Override to hook into your socket client (e.g., call `socket.onAny()`).
+  /// Starts observing socket events.
+  /// Override this to hook into your socket client's event system.
   void attach() {}
 
-  /// Called when BlackBox is disposed or the adapter is replaced.
-  /// Override to remove hooks from the socket client.
+  /// Stops observing socket events and cleans up any hooks.
   void detach() {}
 }

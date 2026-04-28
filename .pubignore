@@ -1,0 +1,21 @@
+# Exclude old devkit_* legacy files (renamed to blackbox_*)
+lib/src/adapters/dio/dio_devkit_adapter.dart
+lib/src/adapters/http/devkit_http_adapter.dart
+lib/src/adapters/http_client/devkit_http_client.dart
+lib/src/adapters/http_client/http_devkit_adapter.dart
+lib/src/adapters/log/devkit_log_adapter.dart
+lib/src/core/journey/devkit_gesture_observer.dart
+lib/src/core/journey/devkit_navigator_observer.dart
+lib/src/core/report/devkit_device_info.dart
+lib/src/core/report/devkit_report.dart
+lib/src/overlay/devkit_overlay.dart
+lib/src/overlay/devkit_trigger.dart
+lib/src/overlay/widgets/devkit_colors.dart
+
+# Exclude build artifacts and cache
+build/
+.dart_tool/
+.idea/
+*.DS_Store
+pana_output.txt
+pana_output2.txt

@@ -20,8 +20,10 @@ class FpsMonitor {
 
   // ── Public API ──────────────────────────────────────────────────────
 
+  /// Broadcast stream of performance snapshots, emitted every 250ms.
   Stream<FpsSnapshot> get stream => _controller.stream;
 
+  /// The most recent performance snapshot.
   FpsSnapshot get current => _buildSnapshot();
 
   void start() {
@@ -92,8 +94,13 @@ class FpsSnapshot {
     required this.samples,
   });
 
+  /// Computed frames per second.
   final double fps;
+
+  /// Average frame duration in milliseconds.
   final double avgFrameMs;
+
+  /// Duration of the slowest frame in the current window in milliseconds.
   final double worstFrameMs;
 
   /// Raw frame durations (ms) for the rolling window, oldest-first.

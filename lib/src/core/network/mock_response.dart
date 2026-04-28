@@ -20,14 +20,19 @@ class MockResponse {
   /// Simulate a network timeout (throws after [delay]).
   static const MockResponse timeout = MockResponse._timeout();
 
+  /// HTTP status code to return.
   final int statusCode;
+
+  /// Response body data (JSON encodable).
   final dynamic body;
+
+  /// HTTP response headers.
   final Map<String, String> headers;
 
-  /// Artificial delay before the response is returned.
+  /// Artificial delay applied before returning the mock response.
   final Duration delay;
 
-  /// Toggle mocks on/off from the overlay panel without removing them.
+  /// Whether this mock rule is currently active.
   final bool isEnabled;
 
   final bool _isTimeout;

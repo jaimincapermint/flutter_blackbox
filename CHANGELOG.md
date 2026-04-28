@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.3.0] - 2026-04-28
+
+### Added
+- **CLI Init Tool** — `dart run flutter_blackbox:init` auto-detects your project's dependencies (Dio, http, Socket.IO, SharedPreferences) and prints the exact setup code you need.
+  - `--generate` flag creates a ready-to-use `lib/blackbox_setup.dart` file.
+  - `--help` for full usage instructions.
+- **Modular adapter imports** — adapters are now imported via separate paths to avoid pulling unused dependencies:
+  - `import 'package:flutter_blackbox/adapters/dio.dart';`
+  - `import 'package:flutter_blackbox/adapters/http.dart';`
+  - `import 'package:flutter_blackbox/adapters/socket_io.dart';`
+  - `import 'package:flutter_blackbox/adapters/shared_prefs.dart';`
+- **Copy as cURL** — one-tap button in Network panel copies any request as a valid `curl` command (with headers, body, method).
+- **Status Code Filtering** — filter chips to show only 2xx, 4xx, 5xx, Pending, or Failed requests.
+- **Method Filtering** — filter by HTTP method (GET, POST, PUT, DELETE, PATCH).
+- **Response Size Display** — shows response body size (B/KB/MB) in each network tile and detail view.
+- **Request Timing Visualization** — color-coded timing bars (green < 300ms, yellow < 1000ms, red > 1000ms) with speed indicator.
+- **Pretty JSON Viewer** — collapsible, syntax-highlighted JSON tree with color-coded types. Auto-expands first level.
+- **Search Across All Panels** — new "Search" tab that queries Network, Logs, Crashes, and Socket events simultaneously.
+- **Full Dartdoc Coverage** — all public APIs, stores, and models now have comprehensive documentation for better IDE support and higher pub.dev scoring.
+- **Web Compatibility** — removed `dart:io` dependencies from UI panels to ensure the package runs smoothly on Flutter Web.
+
+### Changed
+- **Full "devkit" → "BlackBox" rebrand** — all file names, imports, internal references, and the overlay badge now use the BlackBox name consistently.
+- Main barrel (`flutter_blackbox.dart`) no longer auto-exports concrete adapter implementations. Import adapters separately via `lib/adapters/` paths.
+- Overlay badge now shows "BlackBox" instead of "devkit".
+- Internal Dio extras keys renamed from `devkit_request_id`/`devkit_start_ms` to `blackbox_request_id`/`blackbox_start_ms`.
+- `NetworkResponse` model now includes optional `responseSizeBytes` field and `formattedSize` getter.
+- Dio and HTTP adapters now capture response size automatically.
+- Network panel detail view reorganized with timing summary card, collapsible JSON sections, and action buttons (cURL, Copy URL, Copy All).
+
+### Fixed
+- Fixed duplicate property definitions in `BlackBox` singleton class.
+- Fixed flaky broadcast stream tests in `NetworkStore` by accounting for event throttling.
+- Added missing exports for `JourneyEvent`, `FpsMonitor`, and `BlackBoxDeviceInfo` to the main barrel file.
+
+### Performance
+- **`NetworkPanel`**: Replaced two independent `StreamBuilder`s on the same stream with a single `StreamSubscription`. Previously every network event triggered two separate rebuild cycles; now it triggers one.
+- **`_NetworkTile`**: Cached the `Uri.parse()` result as `late final _endpoint` in `initState`/`didUpdateWidget`. URI parsing no longer runs on every `build()` call.
+- **`_CollapsibleJsonSection`**: Replaced the `_parsed` computed getter with a `late final` field set in `initState`. `jsonDecode` now runs once per section lifecycle instead of on every rebuild.
+- **`RebuildPanel`**: Converted to `StatefulWidget` + `StreamSubscription`. Removed the `Stream.value(...)` anti-pattern and the `(context as Element).markNeedsBuild()` framework hack.
+
+### Migration
+- If you previously used `import 'package:flutter_blackbox/flutter_blackbox.dart'` and relied on Dio/http/Socket/Storage adapters being auto-exported, add the specific adapter import:
+  ```dart
+  // Before (v0.2.x) — everything from one import
+  import 'package:flutter_blackbox/flutter_blackbox.dart';
+
+  // After (v0.3.0) — add adapter imports you need
+  import 'package:flutter_blackbox/flutter_blackbox.dart';
+  import 'package:flutter_blackbox/adapters/dio.dart';         // if using Dio
+  import 'package:flutter_blackbox/adapters/shared_prefs.dart'; // if using SharedPreferences
+  ```
+
+
 ## [0.2.2] - 2026-04-06
 
 ### Fixed

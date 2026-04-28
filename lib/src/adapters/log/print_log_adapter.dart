@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/log/log_entry.dart';
 import '../../core/log/log_level.dart';
-import 'devkit_log_adapter.dart';
+import 'blackbox_log_adapter.dart';
 
 /// Captures [debugPrint] and [developer.log] calls automatically.
 ///

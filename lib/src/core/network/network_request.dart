@@ -10,12 +10,25 @@ class NetworkRequest {
     this.queryParameters = const {},
   });
 
+  /// Unique identifier for the network request.
   final String id;
+
+  /// HTTP method (e.g., 'GET', 'POST').
   final String method;
+
+  /// The destination URL.
   final String url;
+
+  /// When the request was initiated.
   final DateTime timestamp;
+
+  /// HTTP request headers.
   final Map<String, dynamic> headers;
+
+  /// Optional request body payload.
   final dynamic body;
+
+  /// URL query parameters.
   final Map<String, String> queryParameters;
 
   Map<String, dynamic> toJson() => {

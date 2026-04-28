@@ -1,8 +1,14 @@
+/// Base class for events captured in the user journey.
 sealed class JourneyEvent {
   const JourneyEvent(this.timestamp);
+
+  /// When the event occurred.
   final DateTime timestamp;
 
+  /// Human-readable summary of the event.
   String get description;
+
+  /// JSON-serialisable representation.
   Map<String, dynamic> toJson();
 }
 

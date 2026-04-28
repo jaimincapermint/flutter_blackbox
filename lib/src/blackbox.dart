@@ -7,15 +7,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'adapters/http/devkit_http_adapter.dart';
-import 'adapters/log/devkit_log_adapter.dart';
+import 'adapters/http/blackbox_http_adapter.dart';
+import 'adapters/log/blackbox_log_adapter.dart';
 import 'adapters/log/print_log_adapter.dart';
 import 'adapters/socket/blackbox_socket_adapter.dart';
 import 'adapters/storage/blackbox_storage_adapter.dart';
 import 'core/rebuild/rebuild_store.dart';
 import 'core/crash/crash_entry.dart';
 import 'core/crash/crash_store.dart';
-import 'core/journey/devkit_navigator_observer.dart';
+import 'core/journey/blackbox_navigator_observer.dart';
 import 'core/journey/journey_event.dart';
 import 'core/journey/journey_store.dart';
 import 'core/log/log_entry.dart';
@@ -25,11 +25,11 @@ import 'core/network/mock_engine.dart';
 import 'core/network/mock_response.dart';
 import 'core/network/network_store.dart';
 import 'core/performance/fps_monitor.dart';
-import 'core/report/devkit_device_info.dart';
-import 'core/report/devkit_report.dart';
+import 'core/report/blackbox_device_info.dart';
+import 'core/report/blackbox_report.dart';
 import 'core/socket/socket_event.dart';
 import 'core/socket/socket_store.dart';
-import 'overlay/devkit_trigger.dart';
+import 'overlay/blackbox_trigger.dart';
 
 /// Central singleton that owns all BlackBox stores and wires adapters.
 ///
@@ -53,29 +53,48 @@ class BlackBox {
 
   // ── Internal stores ──────────────────────────────────────────────────
 
+  /// Store for recorded log entries.
   final logStore = LogStore();
+
+  /// Store for intercepted network requests.
   final networkStore = NetworkStore();
+
+  /// Engine for mocking network responses based on URL patterns.
   final mockEngine = MockEngine();
+
+  /// Monitor for tracking FPS and frame performance.
   final fpsMonitor = FpsMonitor();
+
+  /// Store for captured platform and Flutter crashes.
   final crashStore = CrashStore();
+
+  /// Store for user navigation and interaction journey.
   final journeyStore = JourneyStore();
+
+  /// Store for intercepted Socket.IO events.
   final socketStore = SocketStore();
+
+  /// Store for widget rebuild counts and tracking state.
   final rebuildStore = RebuildStore();
 
   // ── Storage adapters ──────────────────────────────────────────────────
 
   final List<BlackBoxStorageAdapter> _storageAdapters = [];
 
-  List<BlackBoxStorageAdapter> get storageAdapters =>
-      List.unmodifiable(_storageAdapters);
-
   // ── Rebuild tracking state ────────────────────────────────────────────
 
   bool _autoRebuildTracking = false;
   DebugPrintCallback? _originalDebugPrint;
 
+  /// Whether the overlay is globally enabled.
+  /// When `false`, [setup] and [BlackBoxOverlay] become no-ops.
+  bool get isEnabled => _enabled;
+
+  /// Whether the auto-rebuild tracking is currently active.
   bool get isAutoRebuildTrackingEnabled => _autoRebuildTracking;
 
+  /// A [NavigatorObserver] that logs navigation events to the [journeyStore].
+  /// Add this to your [MaterialApp.navigatorObservers].
   static final journeyObserver =
       BlackBoxNavigatorObserver(_instance.journeyStore);
 
@@ -90,12 +109,18 @@ class BlackBox {
   FlutterExceptionHandler? _originalFlutterError;
   bool Function(Object, StackTrace)? _originalPlatformError;
 
-  bool get isEnabled => _enabled;
-
   /// Whether sensitive storage keys are redacted in the overlay.
   /// Defaults to `true` — sensitive values show as `••••••••`.
   bool get redactSensitiveData => _redactSensitiveData;
+
+  /// Registered storage adapters (e.g., SharedPreferences, Hive).
+  List<BlackBoxStorageAdapter> get storageAdapters =>
+      List.unmodifiable(_storageAdapters);
+
+  /// Current trigger used to open the overlay.
   BlackBoxTrigger get trigger => _trigger;
+
+  /// Registered network adapters (e.g., Dio, dart:http).
   List<BlackBoxHttpAdapter> get httpAdapters =>
       List.unmodifiable(_httpAdapters);
 
@@ -114,7 +139,16 @@ class BlackBox {
 
   // ── Public static API ────────────────────────────────────────────────
 
-  /// Initialise BlackBox. Call once in [main].
+  /// Configures and initializes the BlackBox singleton.
+  ///
+  /// [httpAdapters] - List of [BlackBoxHttpAdapter] to intercept network calls (Dio, http).
+  /// [socketAdapters] - List of [BlackBoxSocketAdapter] to intercept Socket.IO events.
+  /// [logAdapter] - The adapter used to capture logs. Defaults to [PrintLogAdapter].
+  /// [storageAdapters] - List of [BlackBoxStorageAdapter] to inspect app storage.
+  /// [trigger] - How to open the overlay. Defaults to [BlackBoxTrigger.shake].
+  /// [ignoredRebuildWidgets] - List of widget names to exclude from rebuild tracking.
+  /// [enabled] - If the library should be active. Defaults to [kDebugMode].
+  /// [redactSensitiveData] - Whether to mask sensitive keys in storage panels.
   static void setup({
     List<BlackBoxHttpAdapter> httpAdapters = const [],
     List<BlackBoxSocketAdapter> socketAdapters = const [],
@@ -123,10 +157,6 @@ class BlackBox {
     BlackBoxTrigger trigger = const BlackBoxTrigger.shake(),
     List<String> ignoredRebuildWidgets = const [],
     bool? enabled,
-
-    /// When `true` (default), keys matching sensitive patterns
-    /// (password, token, secret, etc.) are redacted in the Storage panel.
-    /// Set to `false` only for internal/dev-only builds.
     bool redactSensitiveData = true,
   }) {
     final dk = _instance;
@@ -237,6 +267,14 @@ class BlackBox {
 
   // ── Logging ──────────────────────────────────────────────────────────
 
+  /// Logs a custom message to the BlackBox log store.
+  ///
+  /// [message] - The log message.
+  /// [level] - Importance of the log (debug, info, warning, error).
+  /// [tag] - Optional category for filtering (e.g., 'Auth', 'UI').
+  /// [data] - Optional metadata map.
+  /// [error] - Associated error object.
+  /// [stackTrace] - Associated stack trace.
   static void log(
     String message, {
     LogLevel level = LogLevel.debug,
@@ -403,12 +441,18 @@ class BlackBox {
     );
   }
 
+  /// Removes a mock rule by its ID.
   static void removeMock(String id) => _instance.mockEngine.removeRule(id);
 
   // ── Overlay control ───────────────────────────────────────────────────
 
+  /// Programmatically opens the BlackBox overlay.
   static void open() => _instance._openOverlay?.call();
+
+  /// Programmatically closes the BlackBox overlay.
   static void close() => _instance._closeOverlay?.call();
+
+  /// Programmatically toggles the BlackBox overlay visibility.
   static void toggle() {
     // Toggled by the overlay widget itself via isVisible state
     _instance._openOverlay?.call();

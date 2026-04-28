@@ -7,8 +7,10 @@ class RebuildStore {
 
   Timer? _throttleTimer;
 
+  /// Current rebuild count for each tracked widget label.
   Map<String, int> get counts => Map.unmodifiable(_counts);
 
+  /// Broadcast stream of the current rebuild counts, throttled to 500ms.
   Stream<Map<String, int>> get stream => _controller.stream;
 
   /// Record a single rebuild for [widgetName].

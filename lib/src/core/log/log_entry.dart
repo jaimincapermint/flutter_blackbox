@@ -13,18 +13,28 @@ class LogEntry {
     this.stackTrace,
   });
 
+  /// Unique identifier for the log entry.
   final String id;
+
+  /// Severity level of the log.
   final LogLevel level;
+
+  /// The recorded message.
   final String message;
+
+  /// When the log event occurred.
   final DateTime timestamp;
 
-  /// Optional tag / source label e.g. 'AuthBloc', 'ApiService'.
+  /// Optional tag or category label (e.g., 'AuthBloc', 'Network').
   final String? tag;
 
-  /// Arbitrary structured data attached to this log event.
+  /// Arbitrary structured metadata attached to this log.
   final Map<String, dynamic>? data;
 
+  /// Optional error object associated with this log.
   final Object? error;
+
+  /// Optional stack trace associated with this log.
   final StackTrace? stackTrace;
 
   Map<String, dynamic> toJson() => {
