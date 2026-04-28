@@ -4,13 +4,13 @@
 
 ### Added
 - **CLI Init Tool** — `dart run flutter_blackbox:init` auto-detects your project's dependencies (Dio, http, Socket.IO, SharedPreferences) and prints the exact setup code you need.
-  - `--generate` flag creates a ready-to-use `lib/blackbox_setup.dart` file.
+  - `--generate` flag generates a `lib/blackbox_adapters.dart` file with **only** the adapters your project uses — zero unnecessary packages installed.
   - `--help` for full usage instructions.
-- **Modular adapter imports** — adapters are now imported via separate paths to avoid pulling unused dependencies:
-  - `import 'package:flutter_blackbox/adapters/dio.dart';`
-  - `import 'package:flutter_blackbox/adapters/http.dart';`
-  - `import 'package:flutter_blackbox/adapters/socket_io.dart';`
-  - `import 'package:flutter_blackbox/adapters/shared_prefs.dart';`
+- **CLI-generated adapter architecture** — concrete adapter implementations (DioBlackBoxAdapter, HttpBlackBoxAdapter, SocketIOBlackBoxAdapter, SharedPrefsStorageAdapter) are no longer bundled inside `lib/`. They are generated into the user's project by the CLI. This means:
+  - `flutter_blackbox` has **zero optional dependencies** — 63 KB total package size.
+  - Dio users don't get `http`, `socket_io_client`, or `shared_preferences` installed.
+  - The generated `lib/blackbox_adapters.dart` is fully editable and customizable.
+  - Same zero-setup pattern as `build_runner`, `freezed`, and `injectable`.
 - **Copy as cURL** — one-tap button in Network panel copies any request as a valid `curl` command (with headers, body, method).
 - **Status Code Filtering** — filter chips to show only 2xx, 4xx, 5xx, Pending, or Failed requests.
 - **Method Filtering** — filter by HTTP method (GET, POST, PUT, DELETE, PATCH).
@@ -23,7 +23,8 @@
 
 ### Changed
 - **Full "devkit" → "BlackBox" rebrand** — all file names, imports, internal references, and the overlay badge now use the BlackBox name consistently.
-- Main barrel (`flutter_blackbox.dart`) no longer auto-exports concrete adapter implementations. Import adapters separately via `lib/adapters/` paths.
+- Main barrel (`flutter_blackbox.dart`) exports only abstract interfaces (`BlackBoxHttpAdapter`, `BlackBoxSocketAdapter`, `BlackBoxStorageAdapter`). Concrete adapter implementations are generated into the user's project by the CLI.
+- Moved `dio`, `http`, `shared_preferences`, `socket_io_client` from `dependencies` to `dev_dependencies` — users only install what they actually use.
 - Overlay badge now shows "BlackBox" instead of "devkit".
 - Internal Dio extras keys renamed from `devkit_request_id`/`devkit_start_ms` to `blackbox_request_id`/`blackbox_start_ms`.
 - `NetworkResponse` model now includes optional `responseSizeBytes` field and `formattedSize` getter.
