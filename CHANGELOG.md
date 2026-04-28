@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.1] - 2026-04-28
+
+### Fixed
+- Widened dependency constraints to support latest major versions and restore full pub.dev score:
+  - `package_info_plus`: `>=9.0.0 <11.0.0` (was `^9.0.0`, now supports v10.x)
+  - `device_info_plus`: `>=12.3.0 <14.0.0` (was `^12.3.0`, now supports v13.x)
+  - `connectivity_plus`: `>=7.0.0 <8.0.0` (was `^7.0.0`, explicit upper bound)
+  - All APIs used (`DeviceInfoPlugin`, `PackageInfo.fromPlatform`, `Connectivity.checkConnectivity`) are stable and unchanged between these major versions.
+
+---
+
 ## [0.3.0] - 2026-04-28
 
 ### Added
