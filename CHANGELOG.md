@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4] - 2026-04-29
+
+### Fixed
+- Pinned `connectivity_plus` to `>=7.0.0 <7.1.0` to resolve an iOS compile error
+  (`Value of type 'NWPath' has no member 'isUltraConstrained'`) introduced in `7.1.x`.
+  That API is only available on iOS 16+ but was used without an `#available` check,
+  breaking apps with lower minimum deployment targets.
+
 ## [0.3.3] - 2026-04-29
 
 ### Fixed

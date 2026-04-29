@@ -1,6 +1,6 @@
 name: flutter_blackbox
 description: In-app debug & QA overlay for Flutter. Network inspector, mock engine, live logs, FPS monitor, feature flags, and automated QA reports. Dio & http adapters.
-version: 0.3.3
+version: 0.3.4
 homepage: https://github.com/jaimincapermint/flutter_blackbox
 repository: https://github.com/jaimincapermint/flutter_blackbox
 
@@ -15,7 +15,7 @@ dependencies:
   yaml: ^3.1.0
   package_info_plus: ^9.0.0
   device_info_plus: ^12.3.0
-  connectivity_plus: ^7.1.0
+  connectivity_plus: '>=7.0.0 <7.1.0'
 
 dev_dependencies:
   # ── Optional adapter packages — used only for testing CLI templates ───
