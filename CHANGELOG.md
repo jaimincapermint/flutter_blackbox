@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.3] - 2026-04-29
+
+### Fixed
+- **CLI `--generate` duplicate `httpAdapters` key** — when both `dio` and `http` were present
+  in `pubspec.yaml`, the generator emitted two separate `httpAdapters:` named arguments inside
+  `BlackBox.setup()`, which is a Dart compile error. Both adapters are now merged into a single
+  `httpAdapters: [DioBlackBoxAdapter(dio), HttpBlackBoxAdapter(httpClient)]` list.
+- **CLI `--generate` imports placed after class bodies** — each adapter template previously
+  embedded its own `import` statements at the top of the template string. When two or more
+  adapters were generated into the same file, the second template's imports appeared *after*
+  the first template's class declarations — invalid Dart. The generator now collects all
+  imports first (deduplicated), writes them at the top of the file, then writes all class
+  bodies. `dart:convert` is no longer duplicated when both Dio and http adapters are present.
+- **`HttpBlackBoxAdapter._sanitiseHeaders` return type** — the return type was incorrectly
+  declared as `Map<String, dynamic>` instead of `Map<String, String>`, inconsistent with
+  the Dio adapter and the `NetworkRequest.headers` field. Fixed to `Map<String, String>`.
+- **CLI printed hint also had duplicate `httpAdapters`** — the non-`--generate` setup hint
+  printed to the terminal suffered the same duplication. The hint now groups all HTTP adapters
+  into one `httpAdapters:` line.
+
+---
+
 ## [0.3.2] - 2026-04-28
 
 ### Fixed
@@ -69,7 +91,7 @@
   // Before (v0.2.x) — everything from one import
   import 'package:flutter_blackbox/flutter_blackbox.dart';
 
-  // After (v0.3.0) — add adapter imports you need
+  // After (v0.3.0) — add adapter imports you needq
   import 'package:flutter_blackbox/flutter_blackbox.dart';
   import 'package:flutter_blackbox/adapters/dio.dart';         // if using Dio
   import 'package:flutter_blackbox/adapters/shared_prefs.dart'; // if using SharedPreferences

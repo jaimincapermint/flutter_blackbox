@@ -162,9 +162,24 @@ void _printSetupCode(List<_Detection> detections) {
   print('');
   print('  void main() {');
   print('    BlackBox.setup(');
-  for (final d in detections) {
+
+  // Group httpAdapters into one named argument to avoid duplicate-key errors.
+  final httpSetupLines = detections
+      .where((d) => d.library == 'dio' || d.library == 'http')
+      .map((d) => d.setupLine
+          .replaceFirst('httpAdapters: [', '')
+          .replaceFirst(']', ''))
+      .toList();
+  if (httpSetupLines.isNotEmpty) {
+    print('      httpAdapters: [${httpSetupLines.join(', ')}],');
+  }
+
+  // Non-HTTP adapters (socket, storage, …) keep their own named argument.
+  for (final d in detections.where(
+      (d) => d.library != 'dio' && d.library != 'http')) {
     print('      ${d.setupLine},');
   }
+
   print('      trigger: const BlackBoxTrigger.floatingButton(),');
   print('      enabled: kDebugMode,');
   print('    );');
@@ -184,20 +199,43 @@ void _generateAdapterFile(List<_Detection> detections) {
   buffer.writeln('// Re-run to regenerate after adding new libraries.');
   buffer.writeln('// ignore_for_file: depend_on_referenced_packages');
   buffer.writeln('');
-  buffer.writeln("import 'package:flutter_blackbox/flutter_blackbox.dart';");
-  buffer.writeln('');
 
-  // Write detected adapter imports + implementations
+  // ── 1. Collect all imports first (deduplicated) so they appear at the
+  //       top of the file before any class declarations — required by Dart.
+  final seenImports = <String>{};
+  void addImport(String imp) {
+    if (seenImports.add(imp)) buffer.writeln(imp);
+  }
+
+  addImport("import 'package:flutter_blackbox/flutter_blackbox.dart';");
   for (final d in detections) {
     switch (d.library) {
       case 'dio':
-        buffer.writeln(_dioTemplate());
+        addImport("import 'dart:convert';");
+        addImport("import 'package:dio/dio.dart';");
       case 'http':
-        buffer.writeln(_httpTemplate());
+        addImport("import 'dart:convert';");
+        addImport("import 'package:http/http.dart' as http;");
       case 'socket_io_client':
-        buffer.writeln(_socketIoTemplate());
+        addImport(
+            "import 'package:socket_io_client/socket_io_client.dart' as io;");
       case 'shared_preferences':
-        buffer.writeln(_sharedPrefsTemplate());
+        addImport("import 'package:shared_preferences/shared_preferences.dart';");
+    }
+  }
+  buffer.writeln('');
+
+  // ── 2. Write class bodies (without import statements).
+  for (final d in detections) {
+    switch (d.library) {
+      case 'dio':
+        buffer.writeln(_dioBody());
+      case 'http':
+        buffer.writeln(_httpBody());
+      case 'socket_io_client':
+        buffer.writeln(_socketIoBody());
+      case 'shared_preferences':
+        buffer.writeln(_sharedPrefsBody());
     }
   }
 
@@ -226,9 +264,14 @@ void _generateAdapterFile(List<_Detection> detections) {
   buffer.writeln('void setupBlackBox({${params.join(', ')}}) {');
   buffer.writeln('  BlackBox.setup(');
 
-  if (hasDio) buffer.writeln('    httpAdapters: [DioBlackBoxAdapter(dio)],');
-  if (hasHttp) {
-    buffer.writeln('    httpAdapters: [HttpBlackBoxAdapter(httpClient)],');
+  // Merge all HTTP adapters into one list to avoid duplicate named-argument errors
+  final httpAdapterEntries = <String>[
+    if (hasDio) 'DioBlackBoxAdapter(dio)',
+    if (hasHttp) 'HttpBlackBoxAdapter(httpClient)',
+  ];
+  if (httpAdapterEntries.isNotEmpty) {
+    buffer.writeln(
+        '    httpAdapters: [${httpAdapterEntries.join(', ')}],');
   }
   if (detections.any((d) => d.library == 'socket_io_client')) {
     buffer.writeln(
@@ -276,10 +319,9 @@ void _generateAdapterFile(List<_Detection> detections) {
 // Adapter Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-String _dioTemplate() => r"""
-import 'dart:convert';
-import 'package:dio/dio.dart';
-
+// Returns only the class body (no import statements — those are
+// written once at the top of the file by _generateAdapterFile).
+String _dioBody() => r"""
 // ── DioBlackBoxAdapter ────────────────────────────────────────────────────────
 // Connects your Dio instance to BlackBox's network inspector and mock engine.
 // Auto-generated — safe to modify.
@@ -470,10 +512,7 @@ class _BlackBoxDioInterceptor extends Interceptor {
 }
 """;
 
-String _httpTemplate() => r"""
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
+String _httpBody() => r"""
 // ── HttpBlackBoxAdapter ───────────────────────────────────────────────────────
 // Observes all requests made through an http.Client.
 // Auto-generated — safe to modify.
@@ -564,7 +603,7 @@ class HttpBlackBoxAdapter extends BlackBoxHttpAdapter {
     }
   }
 
-  Map<String, dynamic> _sanitiseHeaders(Map<String, String> headers) {
+  Map<String, String> _sanitiseHeaders(Map<String, String> headers) {
     const redacted = {'authorization', 'cookie', 'set-cookie', 'x-api-key'};
     return {
       for (final e in headers.entries)
@@ -596,9 +635,7 @@ class _BlackBoxObservingClient extends http.BaseClient {
 }
 """;
 
-String _socketIoTemplate() => r"""
-import 'package:socket_io_client/socket_io_client.dart' as io;
-
+String _socketIoBody() => r"""
 // ── SocketIOBlackBoxAdapter ───────────────────────────────────────────────────
 // Captures all incoming socket events via socket.onAny().
 // Auto-generated — safe to modify.
@@ -629,9 +666,7 @@ class SocketIOBlackBoxAdapter extends BlackBoxSocketAdapter {
 }
 """;
 
-String _sharedPrefsTemplate() => r"""
-import 'package:shared_preferences/shared_preferences.dart';
-
+String _sharedPrefsBody() => r"""
 // ── SharedPrefsStorageAdapter ─────────────────────────────────────────────────
 // Exposes SharedPreferences in the BlackBox Storage panel.
 // Auto-generated — safe to modify.

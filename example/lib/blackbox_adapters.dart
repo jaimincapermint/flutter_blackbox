@@ -2,9 +2,8 @@
 // Re-run to regenerate after adding new libraries.
 // ignore_for_file: depend_on_referenced_packages
 
-import 'dart:convert';
-
 import 'package:flutter_blackbox/flutter_blackbox.dart';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -82,8 +81,8 @@ class _BlackBoxDioInterceptor extends Interceptor {
           requestOptions: options,
           statusCode: mock.statusCode,
           data: mock.body,
-          headers:
-              Headers.fromMap(mock.headers.map((k, v) => MapEntry(k, [v]))),
+          headers: Headers.fromMap(
+              mock.headers.map((k, v) => MapEntry(k, [v]))),
         ),
         true,
       );
@@ -99,8 +98,8 @@ class _BlackBoxDioInterceptor extends Interceptor {
     _recordResponse(
       requestOptions: response.requestOptions,
       statusCode: response.statusCode ?? 0,
-      headers:
-          _sanitiseHeaders(Map<String, dynamic>.from(response.headers.map)),
+      headers: _sanitiseHeaders(
+          Map<String, dynamic>.from(response.headers.map)),
       body: body,
       responseSizeBytes: _estimateSize(body),
     );
