@@ -166,17 +166,16 @@ void _printSetupCode(List<_Detection> detections) {
   // Group httpAdapters into one named argument to avoid duplicate-key errors.
   final httpSetupLines = detections
       .where((d) => d.library == 'dio' || d.library == 'http')
-      .map((d) => d.setupLine
-          .replaceFirst('httpAdapters: [', '')
-          .replaceFirst(']', ''))
+      .map((d) =>
+          d.setupLine.replaceFirst('httpAdapters: [', '').replaceFirst(']', ''))
       .toList();
   if (httpSetupLines.isNotEmpty) {
     print('      httpAdapters: [${httpSetupLines.join(', ')}],');
   }
 
   // Non-HTTP adapters (socket, storage, …) keep their own named argument.
-  for (final d in detections.where(
-      (d) => d.library != 'dio' && d.library != 'http')) {
+  for (final d
+      in detections.where((d) => d.library != 'dio' && d.library != 'http')) {
     print('      ${d.setupLine},');
   }
 
@@ -220,7 +219,8 @@ void _generateAdapterFile(List<_Detection> detections) {
         addImport(
             "import 'package:socket_io_client/socket_io_client.dart' as io;");
       case 'shared_preferences':
-        addImport("import 'package:shared_preferences/shared_preferences.dart';");
+        addImport(
+            "import 'package:shared_preferences/shared_preferences.dart';");
     }
   }
   buffer.writeln('');
@@ -270,8 +270,7 @@ void _generateAdapterFile(List<_Detection> detections) {
     if (hasHttp) 'HttpBlackBoxAdapter(httpClient)',
   ];
   if (httpAdapterEntries.isNotEmpty) {
-    buffer.writeln(
-        '    httpAdapters: [${httpAdapterEntries.join(', ')}],');
+    buffer.writeln('    httpAdapters: [${httpAdapterEntries.join(', ')}],');
   }
   if (detections.any((d) => d.library == 'socket_io_client')) {
     buffer.writeln(

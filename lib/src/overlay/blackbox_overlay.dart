@@ -163,29 +163,30 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
               child: _FloatingTriggerButton(onTap: _toggle),
             ),
 
-          // ── Debug overlay panel ──────────────────────────────────────
-          if (_isVisible)
-            Positioned.fill(
-              child: PopScope(
-                canPop: false,
-                onPopInvokedWithResult: (didPop, _) {
-                  if (didPop) return;
-                  _close();
-                },
-                child: HeroControllerScope.none(
-                  child: Navigator(
-                    onGenerateRoute: (_) => PageRouteBuilder(
-                      opaque: false,
-                      pageBuilder: (context, _, __) => FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: _BlackBoxPanel(
-                            onClose: _close, captureScreen: _captureScreen),
+          // ── The Overlay Panel ────────────────────────────────────────
+          Positioned.fill(
+            child: Offstage(
+              offstage: !_isVisible && !_animController.isAnimating,
+              child: IgnorePointer(
+                ignoring: !_isVisible && !_animController.isAnimating,
+                child: Material(
+                  color: Colors.transparent,
+                  child: HeroControllerScope.none(
+                    child: Navigator(
+                      onGenerateRoute: (_) => PageRouteBuilder(
+                        opaque: false,
+                        pageBuilder: (context, _, __) => FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: _BlackBoxPanel(
+                              onClose: _close, captureScreen: _captureScreen),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -213,6 +214,8 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
+  bool _isSearching = false;
+
   static const _tabs = [
     (icon: Icons.wifi, label: 'Network'),
     (icon: Icons.article_outlined, label: 'Logs'),
@@ -222,7 +225,6 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
     (icon: Icons.power, label: 'Socket IO'),
     (icon: Icons.phone_android, label: 'Device'),
     (icon: Icons.bug_report_outlined, label: 'QA'),
-    (icon: Icons.search, label: 'Search'),
   ];
 
   @override
@@ -251,25 +253,30 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
                 tabController: _tabController,
                 tabs: _tabs,
                 onClose: widget.onClose,
+                isSearching: _isSearching,
+                onSearchToggle: () {
+                  setState(() => _isSearching = !_isSearching);
+                },
               ),
               const SizedBox(height: 8),
               // ── Tab content ──────────────────────────────────────────
               Expanded(
                 child: _PanelCard(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      const NetworkPanel(),
-                      const LogPanel(),
-                      const PerformancePanel(),
-                      const RebuildPanel(),
-                      const StoragePanel(),
-                      const SocketPanel(),
-                      const DevicePanel(),
-                      QaPanel(captureScreen: widget.captureScreen),
-                      const SearchPanel(),
-                    ],
-                  ),
+                  child: _isSearching
+                      ? const SearchPanel()
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            const NetworkPanel(),
+                            const LogPanel(),
+                            const PerformancePanel(),
+                            const RebuildPanel(),
+                            const StoragePanel(),
+                            const SocketPanel(),
+                            const DevicePanel(),
+                            QaPanel(captureScreen: widget.captureScreen),
+                          ],
+                        ),
                 ),
               ),
             ],
@@ -289,11 +296,15 @@ class _PanelHeader extends StatelessWidget {
     required this.tabController,
     required this.tabs,
     required this.onClose,
+    required this.isSearching,
+    required this.onSearchToggle,
   });
 
   final TabController tabController;
   final List<({IconData icon, String label})> tabs;
   final VoidCallback onClose;
+  final bool isSearching;
+  final VoidCallback onSearchToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -311,6 +322,18 @@ class _PanelHeader extends StatelessWidget {
                 const _BlackBoxBadge(),
                 const Spacer(),
                 IconButton(
+                  icon: Icon(
+                    isSearching ? Icons.search_off : Icons.search,
+                    color:
+                        isSearching ? const Color(0xFF6C63FF) : Colors.white70,
+                    size: 18,
+                  ),
+                  onPressed: onSearchToggle,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
                   icon:
                       const Icon(Icons.close, color: Colors.white70, size: 18),
                   onPressed: onClose,
@@ -320,57 +343,58 @@ class _PanelHeader extends StatelessWidget {
               ],
             ),
           ),
-          TabBar(
-            controller: tabController,
-            isScrollable: true,
-            indicatorColor: const Color(0xFF6C63FF),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white38,
-            labelStyle:
-                const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-            tabAlignment: TabAlignment.start,
-            tabs: tabs.map((t) {
-              final isQa = t.label == 'QA';
-              return StreamBuilder<List<dynamic>>(
-                stream: isQa
-                    ? BlackBox.instance.crashStore.stream
-                    : const Stream<List<dynamic>>.empty(),
-                initialData:
-                    isQa ? BlackBox.instance.crashStore.entries : <dynamic>[],
-                builder: (context, snapshot) {
-                  final hasCrash = isQa && ((snapshot.data ?? []).isNotEmpty);
-                  return Tab(
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(t.icon, size: 16),
-                        if (hasCrash)
-                          Positioned(
-                            right: -4,
-                            top: -2,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(4),
+          if (!isSearching)
+            TabBar(
+              controller: tabController,
+              isScrollable: true,
+              indicatorColor: const Color(0xFF6C63FF),
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white38,
+              labelStyle:
+                  const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+              tabAlignment: TabAlignment.start,
+              tabs: tabs.map((t) {
+                final isQa = t.label == 'QA';
+                return StreamBuilder<List<dynamic>>(
+                  stream: isQa
+                      ? BlackBox.instance.crashStore.stream
+                      : const Stream<List<dynamic>>.empty(),
+                  initialData:
+                      isQa ? BlackBox.instance.crashStore.entries : <dynamic>[],
+                  builder: (context, snapshot) {
+                    final hasCrash = isQa && ((snapshot.data ?? []).isNotEmpty);
+                    return Tab(
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(t.icon, size: 16),
+                          if (hasCrash)
+                            Positioned(
+                              right: -4,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text('CRASH',
+                                    style: TextStyle(
+                                        fontSize: 6,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
                               ),
-                              child: const Text('CRASH',
-                                  style: TextStyle(
-                                      fontSize: 6,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                      ],
-                    ),
-                    text: t.label,
-                    iconMargin: const EdgeInsets.only(bottom: 2),
-                  );
-                },
-              );
-            }).toList(),
-          ),
+                        ],
+                      ),
+                      text: t.label,
+                      iconMargin: const EdgeInsets.only(bottom: 2),
+                    );
+                  },
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -425,8 +449,9 @@ class _FloatingTriggerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return Listener(
+      onPointerUp: (_) => onTap(),
+      behavior: HitTestBehavior.opaque,
       child: Container(
         width: 40,
         height: 40,

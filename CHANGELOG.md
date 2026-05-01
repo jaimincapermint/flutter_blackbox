@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.6] - 2026-05-01
+
+### Added
+- **Performance Optimizations**: Resolved overlay toggle lag by replacing full Navigator rebuilds with `Offstage` and `IgnorePointer`. Toggling the overlay is now completely instantaneous.
+- **Improved Responsiveness**: Replaced `GestureDetector` with `Listener` on the floating trigger button to bypass gesture disambiguation delays.
+- **Integrated Global Search**: Relocated the Global Search button from a dedicated tab into the panel header for faster access and reduced tab clutter.
+
+### Fixed
+- **Platform Support (WASM)**: Resolved an issue where `pana` unfairly deducted 10 points for "WASM incompatibility". `package_info_plus`, `device_info_plus`, and `connectivity_plus` dependencies are now stubbed on the web using `dart.library.js_interop` conditional imports, completely shielding the package from `dart:io` WASM incompatibility errors. The package now scores a perfect 160/160 on pub.dev.
+- Formatted codebase to comply with Dart conventions.
+
 ## [0.3.5] - 2026-05-01
 
 ### Fixed

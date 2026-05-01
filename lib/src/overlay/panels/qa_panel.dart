@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../blackbox.dart';
 import '../../core/report/blackbox_report.dart';
+import '../../core/report/package_info_impl.dart'
+    if (dart.library.html) '../../core/report/package_info_stub.dart'
+    if (dart.library.js_interop) '../../core/report/package_info_stub.dart';
 
 class QaPanel extends StatefulWidget {
   const QaPanel({super.key, required this.captureScreen});
@@ -22,7 +24,7 @@ class _QaPanelState extends State<QaPanel> {
   String? _lastReportText;
   String? _lastMarkdownText;
   List<int>? _lastScreenshot;
-  PackageInfo? _packageInfo;
+  Map<String, String>? _packageInfo;
 
   @override
   void initState() {
@@ -31,7 +33,7 @@ class _QaPanelState extends State<QaPanel> {
   }
 
   Future<void> _initPackageInfo() async {
-    final info = await PackageInfo.fromPlatform();
+    final info = await getPackageInfo();
     if (mounted) setState(() => _packageInfo = info);
   }
 
@@ -161,16 +163,16 @@ class _QaPanelState extends State<QaPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('App Name: ${_packageInfo!.appName}',
+                  Text('App Name: ${_packageInfo!['appName'] ?? ''}',
                       style:
                           const TextStyle(fontSize: 11, color: Colors.white70)),
                   const SizedBox(height: 4),
                   Text(
-                      'Version: ${_packageInfo!.version} (${_packageInfo!.buildNumber})',
+                      'Version: ${_packageInfo!['version'] ?? ''} (${_packageInfo!['buildNumber'] ?? ''})',
                       style:
                           const TextStyle(fontSize: 11, color: Colors.white70)),
                   const SizedBox(height: 4),
-                  Text('Package Name: ${_packageInfo!.packageName}',
+                  Text('Package Name: ${_packageInfo!['packageName'] ?? ''}',
                       style:
                           const TextStyle(fontSize: 11, color: Colors.white70)),
                 ],

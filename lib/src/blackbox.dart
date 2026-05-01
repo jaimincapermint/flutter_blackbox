@@ -1,17 +1,19 @@
 import 'dart:async';
 import 'dart:developer' as dev;
-import 'dart:ui' as ui;
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import 'adapters/http/blackbox_http_adapter.dart';
 import 'adapters/log/blackbox_log_adapter.dart';
 import 'adapters/log/print_log_adapter.dart';
 import 'adapters/socket/blackbox_socket_adapter.dart';
 import 'adapters/storage/blackbox_storage_adapter.dart';
+import 'core/report/package_info_impl.dart'
+    if (dart.library.html) 'core/report/package_info_stub.dart'
+    if (dart.library.js_interop) 'core/report/package_info_stub.dart';
+import 'core/report/platform_info_impl.dart'
+    if (dart.library.html) 'core/report/platform_info_stub.dart'
+    if (dart.library.js_interop) 'core/report/platform_info_stub.dart';
 import 'core/rebuild/rebuild_store.dart';
 import 'core/crash/crash_entry.dart';
 import 'core/crash/crash_store.dart';
@@ -472,7 +474,7 @@ class BlackBox {
       bugTitle: bugTitle,
       severity: severity,
       timestamp: DateTime.now(),
-      appInfo: await _appInfo(),
+      appInfo: await _appInfo() ?? {},
       deviceInfo: await _getDeviceInfo(),
       userJourney: dk.journeyStore.numberedSteps,
       failedRequests: dk.networkStore.entries
@@ -525,18 +527,8 @@ class BlackBox {
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
-  static Future<Map<String, String>> _appInfo() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      return {
-        'appName': info.appName,
-        'packageName': info.packageName,
-        'version': info.version,
-        'buildNumber': info.buildNumber,
-      };
-    } catch (_) {
-      return {'error': 'Failed to fetch package info'};
-    }
+  static Future<Map<String, String>?> _appInfo() async {
+    return await getPackageInfo();
   }
 
   // ── Device Info Parsing ───────────────────────────────────────────────
@@ -548,83 +540,6 @@ class BlackBox {
   }
 
   static Future<BlackBoxDeviceInfo> _fetchDeviceInfo() async {
-    if (kIsWeb) {
-      return BlackBoxDeviceInfo(
-        platform: 'web',
-        osVersion: 'Unknown',
-        deviceModel: 'Browser',
-        networkType: 'unknown',
-        locale: ui.PlatformDispatcher.instance.locale.toString(),
-        timezone: DateTime.now().timeZoneName,
-        screenSize: 'Unknown',
-        pixelRatio: 1.0,
-        brightness: 'Unknown',
-      );
-    }
-
-    final deviceInfo = DeviceInfoPlugin();
-    final connectivity = Connectivity();
-
-    String osVersion = 'Unknown';
-    String deviceModel = 'Unknown';
-    String? cpuArch;
-    int? androidSdkInt;
-    int? totalRamMb;
-
-    try {
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final androidInfo = await deviceInfo.androidInfo;
-        osVersion =
-            'Android ${androidInfo.version.release} (API ${androidInfo.version.sdkInt})';
-        deviceModel = '${androidInfo.manufacturer} ${androidInfo.model}';
-        cpuArch = androidInfo.supportedAbis.isNotEmpty
-            ? androidInfo.supportedAbis.first
-            : null;
-        androidSdkInt = androidInfo.version.sdkInt;
-        // Approximation, androidInfo.systemFeatures doesn't explicitly expose RAM memory cleanly
-      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        osVersion = 'iOS ${iosInfo.systemVersion}';
-        deviceModel = iosInfo.name;
-      }
-    } catch (_) {}
-
-    String netType = 'unknown';
-    try {
-      final connectivityResult = await connectivity.checkConnectivity();
-      if (connectivityResult.contains(ConnectivityResult.wifi)) {
-        netType = 'wifi';
-      } else if (connectivityResult.contains(ConnectivityResult.mobile)) {
-        netType = 'mobile';
-      } else if (connectivityResult.contains(ConnectivityResult.ethernet)) {
-        netType = 'ethernet';
-      } else if (connectivityResult.contains(ConnectivityResult.none)) {
-        netType = 'none';
-      } else {
-        netType = connectivityResult.first.name;
-      }
-    } catch (_) {}
-
-    final window = ui.PlatformDispatcher.instance.views.first;
-    final size = window.physicalSize / window.devicePixelRatio;
-
-    return BlackBoxDeviceInfo(
-      platform: defaultTargetPlatform.name,
-      osVersion: osVersion,
-      deviceModel: deviceModel,
-      cpuArch: cpuArch,
-      androidSdkInt: androidSdkInt,
-      totalRamMb: totalRamMb,
-      availableRamMb: null,
-      networkType: netType,
-      batteryPercent: null,
-      isCharging: null,
-      locale: ui.PlatformDispatcher.instance.locale.toString(),
-      timezone: DateTime.now().timeZoneName,
-      screenSize:
-          '${size.width.toStringAsFixed(0)}x${size.height.toStringAsFixed(0)} dp',
-      pixelRatio: window.devicePixelRatio,
-      brightness: ui.PlatformDispatcher.instance.platformBrightness.name,
-    );
+    return await fetchPlatformDeviceInfo();
   }
 }

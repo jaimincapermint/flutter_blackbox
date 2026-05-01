@@ -81,8 +81,8 @@ class _BlackBoxDioInterceptor extends Interceptor {
           requestOptions: options,
           statusCode: mock.statusCode,
           data: mock.body,
-          headers: Headers.fromMap(
-              mock.headers.map((k, v) => MapEntry(k, [v]))),
+          headers:
+              Headers.fromMap(mock.headers.map((k, v) => MapEntry(k, [v]))),
         ),
         true,
       );
@@ -98,8 +98,8 @@ class _BlackBoxDioInterceptor extends Interceptor {
     _recordResponse(
       requestOptions: response.requestOptions,
       statusCode: response.statusCode ?? 0,
-      headers: _sanitiseHeaders(
-          Map<String, dynamic>.from(response.headers.map)),
+      headers:
+          _sanitiseHeaders(Map<String, dynamic>.from(response.headers.map)),
       body: body,
       responseSizeBytes: _estimateSize(body),
     );
