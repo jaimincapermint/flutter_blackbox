@@ -45,16 +45,24 @@ class _QaPanelState extends State<QaPanel> {
   }
 
   Future<void> _generateReport() async {
+    final title = _titleController.text;
+    final notes = _notesController.text;
+    final severity = _selectedSeverity;
+
     setState(() => _isGenerating = true);
     try {
       final screenshot = await widget.captureScreen();
+      if (!mounted) return;
+
       final report = await BlackBox.buildReport(
-        bugTitle:
-            _titleController.text.isNotEmpty ? _titleController.text : null,
-        severity: _selectedSeverity,
-        notes: _notesController.text,
+        bugTitle: title.isNotEmpty ? title : null,
+        severity: severity,
+        notes: notes,
         screenshotPngBytes: screenshot,
       );
+
+      if (!mounted) return;
+
       setState(() {
         _lastReportText = report.toString();
         _lastMarkdownText = report.toMarkdown();
@@ -62,7 +70,7 @@ class _QaPanelState extends State<QaPanel> {
         _isGenerating = false;
       });
     } catch (e) {
-      setState(() => _isGenerating = false);
+      if (mounted) setState(() => _isGenerating = false);
     }
   }
 

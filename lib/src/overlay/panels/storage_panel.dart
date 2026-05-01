@@ -73,19 +73,18 @@ class _StoragePanelState extends State<StoragePanel> {
     // Block editing of sensitive keys
     if (_isSensitive(key)) return;
 
-    final controller = TextEditingController(text: currentValue.toString());
     final type = _detectType(currentValue);
 
     final result = await showDialog<_EditResult>(
       context: context,
       builder: (ctx) => _EditDialog(
         keyName: key,
-        controller: controller,
+        initialValue: currentValue.toString(),
         currentType: type,
       ),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       final parsedValue = _parseValue(result.value, result.type);
       await _adapters[_selectedAdapter].write(key, parsedValue);
       _loadData();
@@ -93,18 +92,15 @@ class _StoragePanelState extends State<StoragePanel> {
   }
 
   Future<void> _addNewKey() async {
-    final keyController = TextEditingController();
-    final valueController = TextEditingController();
-
     final result = await showDialog<_EditResult>(
       context: context,
-      builder: (ctx) => _AddKeyDialog(
-        keyController: keyController,
-        valueController: valueController,
-      ),
+      builder: (ctx) => const _AddKeyDialog(),
     );
 
-    if (result != null && result.key != null && result.key!.isNotEmpty) {
+    if (result != null &&
+        result.key != null &&
+        result.key!.isNotEmpty &&
+        mounted) {
       final parsedValue = _parseValue(result.value, result.type);
       await _adapters[_selectedAdapter].write(result.key!, parsedValue);
       _loadData();
@@ -495,12 +491,12 @@ class _EditResult {
 class _EditDialog extends StatefulWidget {
   const _EditDialog({
     required this.keyName,
-    required this.controller,
+    required this.initialValue,
     required this.currentType,
   });
 
   final String keyName;
-  final TextEditingController controller;
+  final String initialValue;
   final String currentType;
 
   @override
@@ -509,11 +505,19 @@ class _EditDialog extends StatefulWidget {
 
 class _EditDialogState extends State<_EditDialog> {
   late String _type;
+  late final TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
     _type = widget.currentType;
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -527,17 +531,16 @@ class _EditDialogState extends State<_EditDialog> {
         children: [
           if (_type == 'bool')
             SwitchListTile(
-              title: Text(widget.controller.text,
+              title: Text(_controller.text,
                   style: const TextStyle(fontSize: 12, color: Colors.white70)),
-              value: widget.controller.text.toLowerCase() == 'true',
-              onChanged: (v) =>
-                  setState(() => widget.controller.text = v.toString()),
+              value: _controller.text.toLowerCase() == 'true',
+              onChanged: (v) => setState(() => _controller.text = v.toString()),
               activeThumbColor: const Color(0xFF6C63FF),
               contentPadding: EdgeInsets.zero,
             )
           else
             TextField(
-              controller: widget.controller,
+              controller: _controller,
               style: const TextStyle(fontSize: 12, color: Colors.white70),
               decoration: InputDecoration(
                 hintText: 'Value',
@@ -563,7 +566,7 @@ class _EditDialogState extends State<_EditDialog> {
         ),
         TextButton(
           onPressed: () => Navigator.pop(
-              context, _EditResult(value: widget.controller.text, type: _type)),
+              context, _EditResult(value: _controller.text, type: _type)),
           child: const Text('Save',
               style: TextStyle(color: Color(0xFF6C63FF), fontSize: 12)),
         ),
@@ -573,13 +576,7 @@ class _EditDialogState extends State<_EditDialog> {
 }
 
 class _AddKeyDialog extends StatefulWidget {
-  const _AddKeyDialog({
-    required this.keyController,
-    required this.valueController,
-  });
-
-  final TextEditingController keyController;
-  final TextEditingController valueController;
+  const _AddKeyDialog();
 
   @override
   State<_AddKeyDialog> createState() => _AddKeyDialogState();
@@ -587,6 +584,22 @@ class _AddKeyDialog extends StatefulWidget {
 
 class _AddKeyDialogState extends State<_AddKeyDialog> {
   String _type = 'String';
+  late final TextEditingController _keyController;
+  late final TextEditingController _valueController;
+
+  @override
+  void initState() {
+    super.initState();
+    _keyController = TextEditingController();
+    _valueController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    _valueController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -598,7 +611,7 @@ class _AddKeyDialogState extends State<_AddKeyDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
-            controller: widget.keyController,
+            controller: _keyController,
             style: const TextStyle(fontSize: 12, color: Colors.white70),
             decoration: InputDecoration(
               hintText: 'Key name',
@@ -636,19 +649,19 @@ class _AddKeyDialogState extends State<_AddKeyDialog> {
           if (_type == 'bool')
             SwitchListTile(
               title: Text(
-                  widget.valueController.text.isEmpty
+                  _valueController.text.isEmpty
                       ? 'false'
-                      : widget.valueController.text,
+                      : _valueController.text,
                   style: const TextStyle(fontSize: 12, color: Colors.white70)),
-              value: widget.valueController.text.toLowerCase() == 'true',
+              value: _valueController.text.toLowerCase() == 'true',
               onChanged: (v) =>
-                  setState(() => widget.valueController.text = v.toString()),
+                  setState(() => _valueController.text = v.toString()),
               activeThumbColor: const Color(0xFF6C63FF),
               contentPadding: EdgeInsets.zero,
             )
           else
             TextField(
-              controller: widget.valueController,
+              controller: _valueController,
               style: const TextStyle(fontSize: 12, color: Colors.white70),
               decoration: InputDecoration(
                 hintText: 'Value',
@@ -675,10 +688,10 @@ class _AddKeyDialogState extends State<_AddKeyDialog> {
           onPressed: () => Navigator.pop(
               context,
               _EditResult(
-                key: widget.keyController.text,
-                value: widget.valueController.text.isEmpty && _type == 'bool'
+                key: _keyController.text,
+                value: _valueController.text.isEmpty && _type == 'bool'
                     ? 'false'
-                    : widget.valueController.text,
+                    : _valueController.text,
                 type: _type,
               )),
           child: const Text('Add',
