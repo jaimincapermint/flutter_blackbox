@@ -35,7 +35,7 @@ An all-in-one **In-App Debug & QA Overlay** for Flutter. One unified package to 
 
 ```yaml
 dependencies:
-  flutter_blackbox: ^0.3.0
+  flutter_blackbox: ^0.3.7
 ```
 
 ---
