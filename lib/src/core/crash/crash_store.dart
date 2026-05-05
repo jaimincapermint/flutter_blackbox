@@ -31,16 +31,25 @@ class CrashStore {
     _notify();
   }
 
-  void _notify() {
-    if (!_controller.isClosed) {
-      _controller.add(entries);
-    }
-  }
-
   List<Map<String, dynamic>> toJson() =>
       _entries.map((e) => e.toJson()).toList();
 
   void dispose() {
+    _throttleTimer?.cancel();
     _controller.close();
+  }
+
+  // ── Private ─────────────────────────────────────────────────────────
+
+  Timer? _throttleTimer;
+
+  void _notify() {
+    if (_controller.isClosed) return;
+    if (_throttleTimer?.isActive ?? false) return;
+    _throttleTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!_controller.isClosed) {
+        _controller.add(entries);
+      }
+    });
   }
 }

@@ -57,10 +57,11 @@ class FpsMonitor {
         }
         _frameDurations.addLast(deltaMs);
 
-        final now = DateTime.now().millisecondsSinceEpoch;
-        if (now - _lastBroadcastMs > 250) {
+        // Use frame timestamp for throttling — avoids DateTime.now() syscall.
+        final nowMs = timestamp.inMilliseconds;
+        if (nowMs - _lastBroadcastMs > 250) {
           _controller.add(_buildSnapshot());
-          _lastBroadcastMs = now;
+          _lastBroadcastMs = nowMs;
         }
       }
     }

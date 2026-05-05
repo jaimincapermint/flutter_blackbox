@@ -47,10 +47,9 @@ class _SocketPanelState extends State<SocketPanel> {
             builder: (context, snapshot) {
               var events = snapshot.data ?? [];
               if (_query.isNotEmpty) {
+                final q = _query.toLowerCase();
                 events = events
-                    .where((e) => e.eventName
-                        .toLowerCase()
-                        .contains(_query.toLowerCase()))
+                    .where((e) => e.eventName.toLowerCase().contains(q))
                     .toList();
               }
               if (events.isEmpty) {

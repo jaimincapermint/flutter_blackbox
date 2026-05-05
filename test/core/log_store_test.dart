@@ -64,8 +64,8 @@ void main() {
       store.add(entry('a'));
       store.add(entry('b'));
 
-      await Future<void>.delayed(Duration.zero);
-      expect(emissions, [1, 2]);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(emissions, [2]);
       await sub.cancel();
     });
 

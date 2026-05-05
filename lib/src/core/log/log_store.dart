@@ -40,7 +40,7 @@ class LogStore {
   }
 
   /// Filter entries by [level] and optional [query] string.
-  List<LogEntry> filter({
+  Iterable<LogEntry> filter({
     LogLevel? level,
     String? query,
     String? tag,
@@ -56,7 +56,7 @@ class LogStore {
         if (!inMessage && !inTag && !inData) return false;
       }
       return true;
-    }).toList();
+    });
   }
 
   /// Export all entries as a JSON-serialisable list.

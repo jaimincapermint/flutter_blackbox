@@ -42,6 +42,9 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
 
+  // Stored handler reference for cleanup.
+  KeyEventCallback? _keyHandler;
+
   // Shake detection.
   // Full shake detection requires sensors_plus (blackbox_sensors companion).
   // onShakeDetected() is the hook called by that companion package.
@@ -72,6 +75,7 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
     BlackBox.instance.registerOverlayCallbacks(
       open: _open,
       close: _close,
+      toggle: _toggle,
     );
 
     _setupTrigger();
@@ -81,7 +85,8 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
     final trigger = BlackBox.instance.trigger;
     switch (trigger) {
       case HotkeyTrigger(:final key, :final ctrl, :final shift):
-        HardwareKeyboard.instance.addHandler(_handleKey(key, ctrl, shift));
+        _keyHandler = _handleKey(key, ctrl, shift);
+        HardwareKeyboard.instance.addHandler(_keyHandler!);
       case ShakeTrigger():
       // Full shake requires sensors_plus via blackbox_sensors companion.
       // Call state.onShakeDetected() from your accelerometer listener.
@@ -135,6 +140,10 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
 
   @override
   void dispose() {
+    if (_keyHandler != null) {
+      HardwareKeyboard.instance.removeHandler(_keyHandler!);
+      _keyHandler = null;
+    }
     _animController.dispose();
     super.dispose();
   }
@@ -264,18 +273,22 @@ class _BlackBoxPanelState extends State<_BlackBoxPanel>
                 child: _PanelCard(
                   child: _isSearching
                       ? const SearchPanel()
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            const NetworkPanel(),
-                            const LogPanel(),
-                            const PerformancePanel(),
-                            const RebuildPanel(),
-                            const StoragePanel(),
-                            const SocketPanel(),
-                            const DevicePanel(),
-                            QaPanel(captureScreen: widget.captureScreen),
-                          ],
+                      : ListenableBuilder(
+                          listenable: _tabController,
+                          builder: (context, _) => _LazyIndexedStack(
+                            index: _tabController.index,
+                            children: [
+                              () => const NetworkPanel(),
+                              () => const LogPanel(),
+                              () => const PerformancePanel(),
+                              () => const RebuildPanel(),
+                              () => const StoragePanel(),
+                              () => const SocketPanel(),
+                              () => const DevicePanel(),
+                              () =>
+                                  QaPanel(captureScreen: widget.captureScreen),
+                            ],
+                          ),
                         ),
                 ),
               ),
@@ -466,8 +479,46 @@ class _FloatingTriggerButton extends StatelessWidget {
             ),
           ],
         ),
-        child: const Icon(Icons.bug_report, color: Colors.white, size: 20),
       ),
+    );
+  }
+}
+
+class _LazyIndexedStack extends StatefulWidget {
+  const _LazyIndexedStack({required this.index, required this.children});
+  final int index;
+  final List<Widget Function()> children;
+
+  @override
+  State<_LazyIndexedStack> createState() => _LazyIndexedStackState();
+}
+
+class _LazyIndexedStackState extends State<_LazyIndexedStack> {
+  late final List<Widget?> _built;
+
+  @override
+  void initState() {
+    super.initState();
+    _built = List<Widget?>.filled(widget.children.length, null);
+    _built[widget.index] = widget.children[widget.index]();
+  }
+
+  @override
+  void didUpdateWidget(_LazyIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_built[widget.index] == null) {
+      _built[widget.index] = widget.children[widget.index]();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.index,
+      children: [
+        for (int i = 0; i < widget.children.length; i++)
+          _built[i] ?? const SizedBox.shrink(),
+      ],
     );
   }
 }

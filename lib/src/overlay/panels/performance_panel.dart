@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/performance/fps_monitor.dart';
@@ -194,7 +195,7 @@ class _FpsGraphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FpsGraphPainter old) => old.samples != samples;
+  bool shouldRepaint(_FpsGraphPainter old) => !listEquals(old.samples, samples);
 }
 
 class _JankSummary extends StatelessWidget {
@@ -203,6 +204,7 @@ class _JankSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final janks = snap.jankyFrameCount;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -212,19 +214,17 @@ class _JankSummary extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            snap.jankyFrameCount == 0
+            janks == 0
                 ? Icons.check_circle_outline
                 : Icons.warning_amber_outlined,
             size: 16,
-            color: snap.jankyFrameCount == 0
-                ? BlackBoxColors.success
-                : BlackBoxColors.warning,
+            color: janks == 0 ? BlackBoxColors.success : BlackBoxColors.warning,
           ),
           const SizedBox(width: 8),
           Text(
-            snap.jankyFrameCount == 0
+            janks == 0
                 ? 'No jank detected in last ${snap.samples.length} frames'
-                : '${snap.jankyFrameCount} janky frame(s) in last ${snap.samples.length} frames',
+                : '$janks janky frame(s) in last ${snap.samples.length} frames',
             style: const TextStyle(fontSize: 11, color: Colors.white60),
           ),
         ],

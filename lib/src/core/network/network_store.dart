@@ -22,35 +22,46 @@ class NetworkStore {
 
   final int capacity;
   final _entries = ListQueue<NetworkEntry>();
+  final _index = <String, NetworkEntry>{};
   final _controller = StreamController<List<NetworkEntry>>.broadcast();
+
+  // Cached snapshot — invalidated on mutation.
+  List<NetworkEntry>? _cachedEntries;
 
   // ── Public API ──────────────────────────────────────────────────────
 
-  List<NetworkEntry> get entries => List.unmodifiable(_entries);
+  /// Unmodifiable list of all entries. Cached until the next mutation.
+  List<NetworkEntry> get entries =>
+      _cachedEntries ??= List.unmodifiable(_entries);
 
   Stream<List<NetworkEntry>> get stream => _controller.stream;
 
   /// Called by [BlackBoxHttpAdapter] when a request is dispatched.
   void onRequest(NetworkRequest request) {
-    if (_entries.length >= capacity) _entries.removeFirst();
-    _entries.addLast(NetworkEntry(request: request));
-    _notify();
+    if (_entries.length >= capacity) {
+      final removed = _entries.removeFirst();
+      _index.remove(removed.request.id);
+    }
+    final entry = NetworkEntry(request: request);
+    _entries.addLast(entry);
+    _index[request.id] = entry;
+    _invalidateAndNotify();
   }
 
   /// Called by [BlackBoxHttpAdapter] when a response arrives.
+  /// Uses O(1) map lookup instead of linear scan.
   void onResponse(NetworkResponse response) {
-    final entry = _entries.cast<NetworkEntry?>().firstWhere(
-        (e) => e!.request.id == response.requestId,
-        orElse: () => null);
+    final entry = _index[response.requestId];
     if (entry != null) {
       entry.response = response;
-      _notify();
+      _invalidateAndNotify();
     }
   }
 
   void clear() {
     _entries.clear();
-    _notify();
+    _index.clear();
+    _invalidateAndNotify();
   }
 
   List<Map<String, dynamic>> toJson() => _entries
@@ -69,13 +80,14 @@ class NetworkStore {
 
   Timer? _throttleTimer;
 
-  void _notify() {
+  void _invalidateAndNotify() {
+    _cachedEntries = null;
     if (_controller.isClosed) return;
     if (_throttleTimer?.isActive ?? false) return;
 
     _throttleTimer = Timer(const Duration(milliseconds: 250), () {
       if (!_controller.isClosed) {
-        _controller.add(List.unmodifiable(_entries));
+        _controller.add(entries);
       }
     });
   }

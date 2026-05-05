@@ -9,6 +9,15 @@ class MockResponse {
     this.isEnabled = true,
   }) : _isTimeout = false;
 
+  const MockResponse._internal({
+    required this.statusCode,
+    required this.body,
+    required this.headers,
+    required this.delay,
+    required this.isEnabled,
+    required bool isTimeout,
+  }) : _isTimeout = isTimeout;
+
   const MockResponse._timeout()
       : statusCode = 0,
         body = null,
@@ -38,11 +47,29 @@ class MockResponse {
   final bool _isTimeout;
   bool get isTimeout => _isTimeout;
 
-  MockResponse copyWith({bool? isEnabled}) => MockResponse(
-        statusCode: statusCode,
-        body: body,
-        headers: headers,
-        delay: delay,
-        isEnabled: isEnabled ?? this.isEnabled,
-      );
+  MockResponse copyWith({bool? isEnabled}) {
+    if (_isTimeout) {
+      // Preserve timeout semantics — only allow toggling isEnabled.
+      return _MockResponseTimeout(isEnabled: isEnabled ?? this.isEnabled);
+    }
+    return MockResponse(
+      statusCode: statusCode,
+      body: body,
+      headers: headers,
+      delay: delay,
+      isEnabled: isEnabled ?? this.isEnabled,
+    );
+  }
+}
+
+/// Internal subclass that preserves timeout semantics through copyWith.
+class _MockResponseTimeout extends MockResponse {
+  const _MockResponseTimeout({super.isEnabled = true})
+      : super._internal(
+          statusCode: 0,
+          body: null,
+          headers: const {},
+          delay: const Duration(seconds: 30),
+          isTimeout: true,
+        );
 }

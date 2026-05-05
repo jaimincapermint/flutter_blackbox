@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../blackbox.dart';
+import '../../core/log/log_level.dart';
 import '../../core/report/blackbox_report.dart';
 import '../../core/report/package_info_impl.dart'
     if (dart.library.html) '../../core/report/package_info_stub.dart'
@@ -41,6 +42,7 @@ class _QaPanelState extends State<QaPanel> {
   void dispose() {
     _notesController.dispose();
     _titleController.dispose();
+    _lastScreenshot = null;
     super.dispose();
   }
 
@@ -362,9 +364,8 @@ class _SummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final logCount = BlackBox.instance.logStore.entries.length;
     final networkCount = BlackBox.instance.networkStore.entries.length;
-    final errorCount = BlackBox.instance.logStore
-        .filter(level: null, query: null)
-        .where((e) => e.level.index >= 4)
+    final errorCount = BlackBox.instance.logStore.entries
+        .where((e) => e.level == LogLevel.error)
         .length;
 
     return Row(

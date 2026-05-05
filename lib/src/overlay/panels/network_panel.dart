@@ -85,6 +85,29 @@ class _NetworkPanelState extends State<NetworkPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // Compute counts in a single O(N) pass.
+    int c2xx = 0, c4xx = 0, c5xx = 0, cPend = 0, cFail = 0;
+    for (final e in _entries) {
+      if (e.isPending) {
+        cPend++;
+      } else {
+        final res = e.response;
+        if (res != null) {
+          if (res.isSuccess) {
+            c2xx++;
+          } else if (res.isClientError) {
+            c4xx++;
+          } else if (res.isServerError) {
+            c5xx++;
+          }
+
+          if (res.failureType != NetworkFailureType.none) {
+            cFail++;
+          }
+        }
+      }
+    }
+
     // All data comes from _entries — no StreamBuilders needed here.
     final filtered = _applyFilters(_entries);
 
@@ -146,9 +169,7 @@ class _NetworkPanelState extends State<NetworkPanel> {
                 ),
                 _FilterChip(
                   label: '2xx',
-                  count: _entries
-                      .where((e) => e.response?.isSuccess == true)
-                      .length,
+                  count: c2xx,
                   color: BlackBoxColors.success,
                   selected: _statusFilter == _StatusFilter.success,
                   onTap: () =>
@@ -156,9 +177,7 @@ class _NetworkPanelState extends State<NetworkPanel> {
                 ),
                 _FilterChip(
                   label: '4xx',
-                  count: _entries
-                      .where((e) => e.response?.isClientError == true)
-                      .length,
+                  count: c4xx,
                   color: BlackBoxColors.warning,
                   selected: _statusFilter == _StatusFilter.clientErr,
                   onTap: () =>
@@ -166,9 +185,7 @@ class _NetworkPanelState extends State<NetworkPanel> {
                 ),
                 _FilterChip(
                   label: '5xx',
-                  count: _entries
-                      .where((e) => e.response?.isServerError == true)
-                      .length,
+                  count: c5xx,
                   color: BlackBoxColors.error,
                   selected: _statusFilter == _StatusFilter.serverErr,
                   onTap: () =>
@@ -176,18 +193,14 @@ class _NetworkPanelState extends State<NetworkPanel> {
                 ),
                 _FilterChip(
                   label: '⏳',
-                  count: _entries.where((e) => e.isPending).length,
+                  count: cPend,
                   selected: _statusFilter == _StatusFilter.pending,
                   onTap: () =>
                       setState(() => _statusFilter = _StatusFilter.pending),
                 ),
                 _FilterChip(
                   label: '❌',
-                  count: _entries
-                      .where((e) =>
-                          e.response?.failureType != null &&
-                          e.response!.failureType != NetworkFailureType.none)
-                      .length,
+                  count: cFail,
                   color: BlackBoxColors.error,
                   selected: _statusFilter == _StatusFilter.failed,
                   onTap: () =>

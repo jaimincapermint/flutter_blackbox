@@ -48,8 +48,12 @@ Future<BlackBoxDeviceInfo> fetchPlatformDeviceInfo() async {
     }
   } catch (_) {}
 
-  final window = ui.PlatformDispatcher.instance.views.first;
-  final size = window.physicalSize / window.devicePixelRatio;
+  final views = ui.PlatformDispatcher.instance.views;
+  final window = views.isNotEmpty ? views.first : null;
+  final size = window != null
+      ? window.physicalSize / window.devicePixelRatio
+      : const ui.Size(0, 0);
+  final pixelRatio = window?.devicePixelRatio ?? 1.0;
 
   return BlackBoxDeviceInfo(
     platform: defaultTargetPlatform.name,
@@ -66,7 +70,7 @@ Future<BlackBoxDeviceInfo> fetchPlatformDeviceInfo() async {
     timezone: DateTime.now().timeZoneName,
     screenSize:
         '${size.width.toStringAsFixed(0)}x${size.height.toStringAsFixed(0)} dp',
-    pixelRatio: window.devicePixelRatio,
+    pixelRatio: pixelRatio,
     brightness: ui.PlatformDispatcher.instance.platformBrightness.name,
   );
 }

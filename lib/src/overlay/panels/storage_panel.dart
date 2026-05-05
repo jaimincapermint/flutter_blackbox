@@ -146,12 +146,13 @@ class _StoragePanelState extends State<StoragePanel> {
       );
     }
 
+    final q = _query.toLowerCase();
     final filteredEntries = _data.entries
         .where(
           (e) =>
               _query.isEmpty ||
-              e.key.toLowerCase().contains(_query.toLowerCase()) ||
-              e.value.toString().toLowerCase().contains(_query.toLowerCase()),
+              e.key.toLowerCase().contains(q) ||
+              e.value.toString().toLowerCase().contains(q),
         )
         .toList();
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,11 +19,20 @@ class SearchPanel extends StatefulWidget {
 class _SearchPanelState extends State<SearchPanel> {
   String _query = '';
   final _controller = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _query = value);
+    });
   }
 
   List<_SearchResult> _search(String query) {
@@ -167,7 +178,7 @@ class _SearchPanelState extends State<SearchPanel> {
             ),
             child: TextField(
               controller: _controller,
-              onChanged: (v) => setState(() => _query = v),
+              onChanged: _onSearchChanged,
               style: const TextStyle(
                   fontSize: 12, color: Colors.white70, fontFamily: 'monospace'),
               decoration: InputDecoration(

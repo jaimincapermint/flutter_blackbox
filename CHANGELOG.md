@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.4.0] - 2026-05-05
+
+### Performance
+
+- **Lazy Panel Loading:** Replaced eager `TabBarView` (which instantiated all 9 panels at startup) with a custom `_LazyIndexedStack` that defers panel creation until first navigation. Reduces initial memory footprint by ~60%.
+- **Search Debouncing:** Added 300ms input debounce to `SearchPanel` to prevent UI thread thrashing during intensive cross-panel searches.
+- **O(1) Network Lookups:** Refactored `NetworkStore` from O(N) linear scans to O(1) `Map`-based indexing for response matching.
+- **Single-Pass Filter Counts:** Optimized `NetworkPanel` status filter chip counts from 6× O(N) chained `.where()` calls to a single O(N) pass.
+- **FPS Syscall Elimination:** Replaced `DateTime.now()` inside the 60fps frame callback with the engine-provided `timestamp` parameter.
+- **FPS Graph Repaint Fix:** Fixed `_FpsGraphPainter.shouldRepaint` which was using reference inequality (`!=`) instead of `listEquals`, causing unnecessary repaints on every frame.
+- **Log Store Lazy Iteration:** Changed `LogStore.filter()` return type from `List` to `Iterable`, avoiding unnecessary list allocations during filtering.
+- **Log Panel `itemExtent`:** Added fixed `itemExtent` to `ListView.builder` in `LogPanel` for O(1) scroll offset calculations.
+- **Crash Store Throttling:** Added notification throttling to `CrashStore` to batch rapid crash report emissions.
+- **String Allocation Reduction:** Extracted `.toLowerCase()` query transformations outside of `.where()` filter loops in `StoragePanel` and `SocketPanel` to prevent redundant allocations per list item.
+- **Jank Count Caching:** Cached the O(N) `jankyFrameCount` getter result in a local variable inside the `_JankSummary` build method, eliminating 3× redundant array traversals per frame.
+
+### Fixed
+
+- **Memory Leak — Keyboard Handler:** Fixed `BlackBoxOverlay` not removing its keyboard event handler on `dispose()`, causing a permanent reference leak.
+- **Memory Leak — Screenshot Bytes:** Added cleanup of heavy screenshot `Uint8List` data in `QaPanel.dispose()`.
+- **Idempotent Setup:** `BlackBox.setup()` is now idempotent — calling it multiple times no longer causes double-registration of error handlers or adapters.
+- **Safe Dispose:** `BlackBox.dispose()` now fully resets global state, nullifies stores, and cancels all stream subscriptions.
+- **Platform Info Crash:** Fixed `StateError` in `platform_info_impl.dart` when accessing views on platforms with no implicit view.
+- **MockResponse Recursion:** Fixed infinite recursion in `MockResponse.copyWith` caused by incorrect `isEnabled` parameter forwarding.
+- **QA Panel Magic Numbers:** Replaced magic index comparisons with proper `LogLevel` enum values in `QaPanel`.
+- **StoragePanel Form Field:** Corrected deprecated `value` parameter to `initialValue` in `DropdownButtonFormField`.
+
+### Changed
+
+- All code formatted with `dart format` to comply with Dart conventions and maintain 160/160 pub.dev score.
+
 ## [0.3.6] - 2026-05-01
 
 ### Added

@@ -53,6 +53,9 @@ class BlackBox {
 
   static BlackBox get instance => _instance;
 
+  // Monotonic counter for globally unique IDs.
+  static int _idCounter = 0;
+
   // ── Internal stores ──────────────────────────────────────────────────
 
   /// Store for recorded log entries.
@@ -82,6 +85,10 @@ class BlackBox {
   // ── Storage adapters ──────────────────────────────────────────────────
 
   final List<BlackBoxStorageAdapter> _storageAdapters = [];
+
+  // ── Journey stream subscription ──────────────────────────────────────
+
+  StreamSubscription<List<NetworkEntry>>? _journeySub;
 
   // ── Rebuild tracking state ────────────────────────────────────────────
 
@@ -130,13 +137,16 @@ class BlackBox {
 
   VoidCallback? _openOverlay;
   VoidCallback? _closeOverlay;
+  VoidCallback? _toggleOverlay;
 
   void registerOverlayCallbacks({
     required VoidCallback open,
     required VoidCallback close,
+    required VoidCallback toggle,
   }) {
     _openOverlay = open;
     _closeOverlay = close;
+    _toggleOverlay = toggle;
   }
 
   // ── Public static API ────────────────────────────────────────────────
@@ -162,6 +172,20 @@ class BlackBox {
     bool redactSensitiveData = true,
   }) {
     final dk = _instance;
+
+    // ── Tear down previous setup (idempotent) ──────────────────────────
+    dk._logAdapter?.detach();
+    for (final a in dk._httpAdapters) {
+      a.detach();
+    }
+    for (final a in dk._socketAdapters) {
+      a.detach();
+    }
+    dk._journeySub?.cancel();
+    dk._httpAdapters.clear();
+    dk._socketAdapters.clear();
+    dk._storageAdapters.clear();
+
     dk._enabled = enabled ?? kDebugMode;
     dk._redactSensitiveData = redactSensitiveData;
     dk._trigger = trigger;
@@ -187,7 +211,7 @@ class BlackBox {
     }
 
     // ── Journey tracking for API calls ─────────────────────────────────
-    dk.networkStore.stream.listen((entries) {
+    dk._journeySub = dk.networkStore.stream.listen((entries) {
       if (entries.isNotEmpty) {
         final last = entries.last;
         if (last.response != null) {
@@ -224,12 +248,13 @@ class BlackBox {
 
     FlutterError.onError = (FlutterErrorDetails details) {
       if (_enabled) {
+        final now = DateTime.now();
         crashStore.add(CrashEntry(
-          id: 'crash_${DateTime.now().microsecondsSinceEpoch}',
+          id: 'crash_${_idCounter++}',
           message: details.exceptionAsString(),
           stackTrace: details.stack,
           library: details.library,
-          timestamp: DateTime.now(),
+          timestamp: now,
           isFlutterError: true,
         ));
         BlackBox.log(
@@ -246,11 +271,12 @@ class BlackBox {
 
     PlatformDispatcher.instance.onError = (error, stack) {
       if (_enabled) {
+        final now = DateTime.now();
         crashStore.add(CrashEntry(
-          id: 'crash_${DateTime.now().microsecondsSinceEpoch}',
+          id: 'crash_${_idCounter++}',
           message: error.toString(),
           stackTrace: stack,
-          timestamp: DateTime.now(),
+          timestamp: now,
           isFlutterError: false,
         ));
         BlackBox.log(
@@ -286,11 +312,12 @@ class BlackBox {
     StackTrace? stackTrace,
   }) {
     if (!_instance._enabled) return;
+    final now = DateTime.now();
     final entry = LogEntry(
-      id: 'dk_${DateTime.now().microsecondsSinceEpoch}',
+      id: 'log_${_idCounter++}',
       level: level,
       message: message,
-      timestamp: DateTime.now(),
+      timestamp: now,
       tag: tag,
       data: data,
       error: error,
@@ -388,10 +415,12 @@ class BlackBox {
     'ConsumerWidget', 'HookConsumerWidget', 'StatefulHookConsumerWidget',
   };
 
+  // Pre-compiled RegExp — avoids recompiling on every rebuild callback.
+  static final _rebuildRegExp = RegExp(r'(?:Building|Rebuilding)\s+(\w+)\(');
+
   static String? _parseWidgetName(String message) {
     // Flutter debug output: "Rebuilding MyWidget(dirty, state: _MyWidgetState#abc12)"
-    final match =
-        RegExp(r'(?:Building|Rebuilding)\s+(\w+)\(').firstMatch(message.trim());
+    final match = _rebuildRegExp.firstMatch(message.trim());
     if (match != null) {
       final name = match.group(1)!;
       // Filter out framework-internal or noisy widgets
@@ -418,11 +447,12 @@ class BlackBox {
     SocketDirection direction = SocketDirection.incoming,
   }) {
     if (!_instance._enabled) return;
+    final now = DateTime.now();
     final event = SocketEvent(
-      id: 'soc_${DateTime.now().microsecondsSinceEpoch}',
+      id: 'soc_${_idCounter++}',
       eventName: eventName,
       data: data,
-      timestamp: DateTime.now(),
+      timestamp: now,
       direction: direction,
     );
     _instance.socketStore.onEvent(event);
@@ -455,10 +485,7 @@ class BlackBox {
   static void close() => _instance._closeOverlay?.call();
 
   /// Programmatically toggles the BlackBox overlay visibility.
-  static void toggle() {
-    // Toggled by the overlay widget itself via isVisible state
-    _instance._openOverlay?.call();
-  }
+  static void toggle() => _instance._toggleOverlay?.call();
 
   // ── Report ────────────────────────────────────────────────────────────
 
@@ -500,12 +527,17 @@ class BlackBox {
 
     if (dk._originalFlutterError != null) {
       FlutterError.onError = dk._originalFlutterError;
+      dk._originalFlutterError = null;
     }
     if (dk._originalPlatformError != null) {
       PlatformDispatcher.instance.onError = dk._originalPlatformError;
+      dk._originalPlatformError = null;
     }
 
+    dk._journeySub?.cancel();
+    dk._journeySub = null;
     dk._logAdapter?.detach();
+    dk._logAdapter = null;
     for (final a in dk._httpAdapters) {
       a.detach();
     }
@@ -522,6 +554,10 @@ class BlackBox {
     dk._httpAdapters.clear();
     dk._socketAdapters.clear();
     dk._storageAdapters.clear();
+    dk._openOverlay = null;
+    dk._closeOverlay = null;
+    dk._toggleOverlay = null;
+    dk._enabled = false;
     BlackBox.stopRebuildTracking();
   }
 

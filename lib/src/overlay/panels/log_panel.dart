@@ -56,16 +56,18 @@ class _LogPanelState extends State<LogPanel> {
                       .filter(level: _filterLevel, query: _query)
                   : all;
 
-              if (filtered.isEmpty) {
+              final filteredList = filtered.toList(growable: false);
+              if (filteredList.isEmpty) {
                 return const EmptyState(
                     icon: Icons.article_outlined, label: 'No logs yet');
               }
 
               return ListView.builder(
                 reverse: true,
-                itemCount: filtered.length,
+                itemExtent: 70, // Performance optimization for large lists
+                itemCount: filteredList.length,
                 itemBuilder: (ctx, i) =>
-                    _LogTile(entry: filtered[filtered.length - 1 - i]),
+                    _LogTile(entry: filteredList[filteredList.length - 1 - i]),
               );
             },
           ),
