@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-05-14
+
+### Fixed
+- Fixed relative image paths in `README.md` not resolving on pub.dev due to HTML `<img>` tag URL rewriting limitations. Replaced with absolute raw GitHub URLs.
+
 ## [0.5.0] - 2026-05-14
 
 ### Added

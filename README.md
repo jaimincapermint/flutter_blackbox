@@ -13,9 +13,9 @@ An all-in-one **In-App Debug & QA Overlay** for Flutter. One unified package to 
 > **Observe Only, Never Modify**: BlackBox hooks into your existing libraries (Dio, http, Socket.IO, SharedPreferences) through their built-in extension points. Your trusted code stays completely untouched.
 
 <p align="center">
-  <img src="assets/network_panel.png" width="300" alt="Network Panel" />
+  <img src="https://raw.githubusercontent.com/jaimincapermint/flutter_blackbox/main/assets/network_panel.png" width="300" alt="Network Panel" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/perf_panel.png" width="300" alt="Performance Panel" />
+  <img src="https://raw.githubusercontent.com/jaimincapermint/flutter_blackbox/main/assets/perf_panel.png" width="300" alt="Performance Panel" />
 </p>
 
 ---
@@ -42,7 +42,7 @@ An all-in-one **In-App Debug & QA Overlay** for Flutter. One unified package to 
 
 ```yaml
 dependencies:
-  flutter_blackbox: ^0.5.0
+  flutter_blackbox: ^0.5.1
 ```
 
 ---
