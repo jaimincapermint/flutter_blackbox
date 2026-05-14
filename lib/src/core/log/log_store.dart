@@ -45,11 +45,12 @@ class LogStore {
     String? query,
     String? tag,
   }) {
+    final q = query?.toLowerCase();
+
     return _buffer.where((e) {
       if (level != null && e.level != level) return false;
       if (tag != null && e.tag != tag) return false;
-      if (query != null && query.isNotEmpty) {
-        final q = query.toLowerCase();
+      if (q != null && q.isNotEmpty) {
         final inMessage = e.message.toLowerCase().contains(q);
         final inTag = e.tag?.toLowerCase().contains(q) ?? false;
         final inData = e.data?.toString().toLowerCase().contains(q) ?? false;

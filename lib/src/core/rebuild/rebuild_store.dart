@@ -7,6 +7,9 @@ class RebuildStore {
 
   Timer? _throttleTimer;
 
+  /// Maximum number of unique widgets to track to prevent memory leaks.
+  int capacity = 500;
+
   /// Current rebuild count for each tracked widget label.
   Map<String, int> get counts => Map.unmodifiable(_counts);
 
@@ -15,6 +18,18 @@ class RebuildStore {
 
   /// Record a single rebuild for [widgetName].
   void record(String widgetName) {
+    if (!_counts.containsKey(widgetName) && _counts.length >= capacity) {
+      // Find the entry with the lowest rebuild count and remove it to prevent memory leaks
+      String? lowestKey;
+      int lowestCount = 2147483647; // Max int
+      for (final entry in _counts.entries) {
+        if (entry.value < lowestCount) {
+          lowestCount = entry.value;
+          lowestKey = entry.key;
+        }
+      }
+      if (lowestKey != null) _counts.remove(lowestKey);
+    }
     _counts[widgetName] = (_counts[widgetName] ?? 0) + 1;
     _notify();
   }

@@ -43,7 +43,7 @@ Future<BlackBoxDeviceInfo> fetchPlatformDeviceInfo() async {
       netType = 'ethernet';
     } else if (connectivityResult.contains(ConnectivityResult.none)) {
       netType = 'none';
-    } else {
+    } else if (connectivityResult.isNotEmpty) {
       netType = connectivityResult.first.name;
     }
   } catch (_) {}

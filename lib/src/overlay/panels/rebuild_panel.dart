@@ -163,6 +163,7 @@ class _RebuildPanelState extends State<RebuildPanel> {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
                   itemCount: entries.length,
+                  itemExtent: 54, // Fixed height for O(1) layout calculation
                   itemBuilder: (ctx, i) {
                     final entry = entries[i];
                     final maxCount = entries.first.value;

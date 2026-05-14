@@ -64,6 +64,7 @@ export 'src/adapters/log/blackbox_log_adapter.dart';
 export 'src/adapters/log/print_log_adapter.dart';
 export 'src/adapters/storage/blackbox_storage_adapter.dart';
 export 'src/adapters/socket/blackbox_socket_adapter.dart';
+export 'src/adapters/observer/blackbox_observer.dart';
 
 // ── Adapter implementations ───────────────────────────────────────────────────
 // Concrete adapters (DioBlackBoxAdapter, HttpBlackBoxAdapter, etc.) are NOT

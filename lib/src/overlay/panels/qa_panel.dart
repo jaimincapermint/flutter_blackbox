@@ -89,7 +89,7 @@ class _QaPanelState extends State<QaPanel> {
   }
 
   void _showCopied() {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(
           content: Text('Copied to clipboard'), duration: Duration(seconds: 2)),
     );

@@ -35,4 +35,26 @@ class CrashEntry {
         'timestamp': timestamp.toIso8601String(),
         'isFlutterError': isFlutterError,
       };
+
+  /// Returns a clean, beautifully formatted text representation of the crash.
+  ///
+  /// Ideal for sending to Slack webhooks, custom APIs, or saving to local text files.
+  String toFormattedString() {
+    final buffer = StringBuffer();
+    buffer.writeln('🛑 BlackBox Crash Report [$id]');
+    buffer.writeln('Time: ${timestamp.toIso8601String()}');
+    buffer.writeln(
+        'Type: ${isFlutterError ? "Flutter Framework Error" : "Platform Exception"}');
+    if (library != null && library!.isNotEmpty) {
+      buffer.writeln('Library: $library');
+    }
+    buffer.writeln('\nMessage:');
+    buffer.writeln(message);
+
+    if (stackTrace != null) {
+      buffer.writeln('\nStack Trace:');
+      buffer.writeln(stackTrace.toString().trim());
+    }
+    return buffer.toString();
+  }
 }

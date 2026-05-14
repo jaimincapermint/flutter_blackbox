@@ -84,9 +84,23 @@ void main(List<String> args) async {
       adapterClass: 'SharedPrefsStorageAdapter',
     ));
   }
+  if (allDeps.contains('firebase_crashlytics')) {
+    detections.add(const _Detection(
+      library: 'firebase_crashlytics',
+      description: 'Firebase Crashlytics',
+      setupLine: 'observers: [CrashlyticsObserver()]',
+      adapterClass: 'CrashlyticsObserver',
+    ));
+  }
 
   // ── 4. Report findings ───────────────────────────────────────────────
-  final allLibs = ['dio', 'http', 'socket_io_client', 'shared_preferences'];
+  final allLibs = [
+    'dio',
+    'http',
+    'socket_io_client',
+    'shared_preferences',
+    'firebase_crashlytics'
+  ];
   final detectedLibs = detections.map((d) => d.library).toSet();
 
   for (final lib in allLibs) {
@@ -221,6 +235,9 @@ void _generateAdapterFile(List<_Detection> detections) {
       case 'shared_preferences':
         addImport(
             "import 'package:shared_preferences/shared_preferences.dart';");
+      case 'firebase_crashlytics':
+        addImport(
+            "import 'package:firebase_crashlytics/firebase_crashlytics.dart';");
     }
   }
   buffer.writeln('');
@@ -236,6 +253,8 @@ void _generateAdapterFile(List<_Detection> detections) {
         buffer.writeln(_socketIoBody());
       case 'shared_preferences':
         buffer.writeln(_sharedPrefsBody());
+      case 'firebase_crashlytics':
+        buffer.writeln(_crashlyticsObserverBody());
     }
   }
 
@@ -278,6 +297,9 @@ void _generateAdapterFile(List<_Detection> detections) {
   }
   if (detections.any((d) => d.library == 'shared_preferences')) {
     buffer.writeln('    storageAdapters: [SharedPrefsStorageAdapter()],');
+  }
+  if (detections.any((d) => d.library == 'firebase_crashlytics')) {
+    buffer.writeln('    observers: [CrashlyticsObserver()],');
   }
 
   buffer.writeln('    logAdapter: PrintLogAdapter(),');
@@ -712,6 +734,26 @@ class SharedPrefsStorageAdapter extends BlackBoxStorageAdapter {
 }
 """;
 
+String _crashlyticsObserverBody() => r"""
+// ── CrashlyticsObserver ───────────────────────────────────────────────────────
+// Forwards BlackBox crashes to Firebase Crashlytics.
+// Auto-generated — safe to modify.
+
+class CrashlyticsObserver extends BlackBoxObserver {
+  @override
+  void onCrash(CrashEntry crash) {
+    FirebaseCrashlytics.instance.recordError(
+      crash.message,
+      crash.stackTrace,
+      reason: 'Caught by Flutter BlackBox 🐞',
+      information: [
+        if (crash.library != null) 'Library: ${crash.library}',
+      ],
+    );
+  }
+}
+""";
+
 void _printHelp() {
   print('');
   print('  🐞 BlackBox Init');
@@ -730,9 +772,10 @@ void _printHelp() {
   print('    dart run flutter_blackbox:init --help       Show this help');
   print('');
   print('  Supported libraries:');
-  print('    • dio                → DioBlackBoxAdapter');
-  print('    • http               → HttpBlackBoxAdapter');
-  print('    • socket_io_client   → SocketIOBlackBoxAdapter');
-  print('    • shared_preferences → SharedPrefsStorageAdapter');
+  print('    • dio                  → DioBlackBoxAdapter');
+  print('    • http                 → HttpBlackBoxAdapter');
+  print('    • socket_io_client     → SocketIOBlackBoxAdapter');
+  print('    • shared_preferences   → SharedPrefsStorageAdapter');
+  print('    • firebase_crashlytics → CrashlyticsObserver');
   print('');
 }

@@ -8,6 +8,7 @@ import 'adapters/log/blackbox_log_adapter.dart';
 import 'adapters/log/print_log_adapter.dart';
 import 'adapters/socket/blackbox_socket_adapter.dart';
 import 'adapters/storage/blackbox_storage_adapter.dart';
+import 'adapters/observer/blackbox_observer.dart';
 import 'core/report/package_info_impl.dart'
     if (dart.library.html) 'core/report/package_info_stub.dart'
     if (dart.library.js_interop) 'core/report/package_info_stub.dart';
@@ -26,6 +27,7 @@ import 'core/log/log_store.dart';
 import 'core/network/mock_engine.dart';
 import 'core/network/mock_response.dart';
 import 'core/network/network_store.dart';
+import 'core/network/network_response.dart';
 import 'core/performance/fps_monitor.dart';
 import 'core/report/blackbox_device_info.dart';
 import 'core/report/blackbox_report.dart';
@@ -85,6 +87,13 @@ class BlackBox {
   // ── Storage adapters ──────────────────────────────────────────────────
 
   final List<BlackBoxStorageAdapter> _storageAdapters = [];
+
+  // ── Observers ─────────────────────────────────────────────────────────
+
+  final List<BlackBoxObserver> _observers = [];
+
+  /// Registered observers (e.g., Crashlytics, Sentry forwarding).
+  List<BlackBoxObserver> get observers => List.unmodifiable(_observers);
 
   // ── Journey stream subscription ──────────────────────────────────────
 
@@ -157,19 +166,23 @@ class BlackBox {
   /// [socketAdapters] - List of [BlackBoxSocketAdapter] to intercept Socket.IO events.
   /// [logAdapter] - The adapter used to capture logs. Defaults to [PrintLogAdapter].
   /// [storageAdapters] - List of [BlackBoxStorageAdapter] to inspect app storage.
+  /// [observers] - List of [BlackBoxObserver] to forward events to external services (Crashlytics, Sentry, etc.).
   /// [trigger] - How to open the overlay. Defaults to [BlackBoxTrigger.shake].
   /// [ignoredRebuildWidgets] - List of widget names to exclude from rebuild tracking.
   /// [enabled] - If the library should be active. Defaults to [kDebugMode].
   /// [redactSensitiveData] - Whether to mask sensitive keys in storage panels.
+  /// [maxRebuildTrackCount] - Maximum unique widgets to track rebuilds for. Defaults to 500.
   static void setup({
     List<BlackBoxHttpAdapter> httpAdapters = const [],
     List<BlackBoxSocketAdapter> socketAdapters = const [],
     BlackBoxLogAdapter? logAdapter,
     List<BlackBoxStorageAdapter> storageAdapters = const [],
+    List<BlackBoxObserver> observers = const [],
     BlackBoxTrigger trigger = const BlackBoxTrigger.shake(),
     List<String> ignoredRebuildWidgets = const [],
     bool? enabled,
     bool redactSensitiveData = true,
+    int maxRebuildTrackCount = 500,
   }) {
     final dk = _instance;
 
@@ -182,12 +195,15 @@ class BlackBox {
       a.detach();
     }
     dk._journeySub?.cancel();
+    dk.fpsMonitor.stop();
     dk._httpAdapters.clear();
     dk._socketAdapters.clear();
     dk._storageAdapters.clear();
+    dk._observers.clear();
 
     dk._enabled = enabled ?? kDebugMode;
     dk._redactSensitiveData = redactSensitiveData;
+    dk.rebuildStore.capacity = maxRebuildTrackCount;
     dk._trigger = trigger;
     if (ignoredRebuildWidgets.isNotEmpty) {
       _ignoredWidgets.addAll(ignoredRebuildWidgets);
@@ -210,7 +226,7 @@ class BlackBox {
       dk._httpAdapters.add(adapter);
     }
 
-    // ── Journey tracking for API calls ─────────────────────────────────
+    // ── Journey tracking + observer notification for API calls ────────
     dk._journeySub = dk.networkStore.stream.listen((entries) {
       if (entries.isNotEmpty) {
         final last = entries.last;
@@ -221,12 +237,17 @@ class BlackBox {
             url: last.request.url,
             statusCode: last.response!.statusCode,
           ));
+          // Notify observers about network activity
+          dk._notifyObserversNetwork(last);
         }
       }
     });
 
     // ── Storage adapters ────────────────────────────────────────────────
     dk._storageAdapters.addAll(storageAdapters);
+
+    // ── Observers ───────────────────────────────────────────────────────
+    dk._observers.addAll(observers);
 
     // ── Socket adapters ─────────────────────────────────────────────────
     for (final adapter in socketAdapters) {
@@ -249,14 +270,16 @@ class BlackBox {
     FlutterError.onError = (FlutterErrorDetails details) {
       if (_enabled) {
         final now = DateTime.now();
-        crashStore.add(CrashEntry(
+        final crash = CrashEntry(
           id: 'crash_${_idCounter++}',
           message: details.exceptionAsString(),
           stackTrace: details.stack,
           library: details.library,
           timestamp: now,
           isFlutterError: true,
-        ));
+        );
+        crashStore.add(crash);
+        _notifyObserversCrash(crash);
         BlackBox.log(
           details.exceptionAsString(),
           level: LogLevel.error,
@@ -272,13 +295,15 @@ class BlackBox {
     PlatformDispatcher.instance.onError = (error, stack) {
       if (_enabled) {
         final now = DateTime.now();
-        crashStore.add(CrashEntry(
+        final crash = CrashEntry(
           id: 'crash_${_idCounter++}',
           message: error.toString(),
           stackTrace: stack,
           timestamp: now,
           isFlutterError: false,
-        ));
+        );
+        crashStore.add(crash);
+        _notifyObserversCrash(crash);
         BlackBox.log(
           error.toString(),
           level: LogLevel.error,
@@ -288,8 +313,8 @@ class BlackBox {
         );
         scheduleMicrotask(() => BlackBox.open());
       }
-      _originalPlatformError?.call(error, stack);
-      return false;
+      final handled = _originalPlatformError?.call(error, stack) ?? false;
+      return handled;
     };
   }
 
@@ -324,6 +349,7 @@ class BlackBox {
       stackTrace: stackTrace,
     );
     _instance.logStore.add(entry);
+    _instance._notifyObserversLog(entry);
 
     final tagStr = tag != null ? '[$tag] ' : '';
     final dataStr = data != null ? ' | Data: $data' : '';
@@ -554,11 +580,52 @@ class BlackBox {
     dk._httpAdapters.clear();
     dk._socketAdapters.clear();
     dk._storageAdapters.clear();
+    dk._observers.clear();
     dk._openOverlay = null;
     dk._closeOverlay = null;
     dk._toggleOverlay = null;
     dk._enabled = false;
     BlackBox.stopRebuildTracking();
+  }
+
+  // ── Observer notifications ───────────────────────────────────────────
+
+  void _notifyObserversCrash(CrashEntry crash) {
+    for (final observer in _observers) {
+      try {
+        observer.onCrash(crash);
+      } catch (_) {
+        // Never let an observer crash take down the app.
+      }
+    }
+  }
+
+  void _notifyObserversLog(LogEntry log) {
+    for (final observer in _observers) {
+      try {
+        observer.onLog(log);
+      } catch (_) {
+        // Never let an observer crash take down the app.
+      }
+    }
+  }
+
+  void _notifyObserversNetwork(NetworkEntry entry) {
+    final res = entry.response;
+    if (res == null) return;
+
+    for (final observer in _observers) {
+      try {
+        if (res.statusCode >= 400 ||
+            res.failureType != NetworkFailureType.none) {
+          observer.onNetworkError(entry);
+        } else {
+          observer.onNetworkResponse(entry);
+        }
+      } catch (_) {
+        // Never let an observer crash take down the app.
+      }
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ class FpsMonitor {
   Duration? _lastTimestamp;
   final _controller = StreamController<FpsSnapshot>.broadcast();
   bool _isRunning = false;
+  bool _callbackRegistered = false;
   int _lastBroadcastMs = 0;
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -29,7 +30,10 @@ class FpsMonitor {
   void start() {
     if (_isRunning) return;
     _isRunning = true;
-    SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
+    if (!_callbackRegistered) {
+      _callbackRegistered = true;
+      SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
+    }
   }
 
   void stop() {

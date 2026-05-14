@@ -89,7 +89,7 @@ class _LogTile extends StatelessWidget {
     return InkWell(
       onLongPress: () {
         Clipboard.setData(ClipboardData(text: entry.toString()));
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
               content: Text('Copied to clipboard'),
               duration: Duration(seconds: 1)),

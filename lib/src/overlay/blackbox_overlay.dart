@@ -178,16 +178,27 @@ class _BlackBoxOverlayState extends State<BlackBoxOverlay>
               offstage: !_isVisible && !_animController.isAnimating,
               child: IgnorePointer(
                 ignoring: !_isVisible && !_animController.isAnimating,
-                child: Material(
-                  color: Colors.transparent,
-                  child: HeroControllerScope.none(
-                    child: Navigator(
-                      onGenerateRoute: (_) => PageRouteBuilder(
-                        opaque: false,
-                        pageBuilder: (context, _, __) => FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: _BlackBoxPanel(
-                              onClose: _close, captureScreen: _captureScreen),
+                child: Localizations(
+                  locale: const Locale('en', 'US'),
+                  delegates: const [
+                    DefaultMaterialLocalizations.delegate,
+                    DefaultWidgetsLocalizations.delegate,
+                  ],
+                  child: Material(
+                    color: Colors.transparent,
+                    child: HeroControllerScope.none(
+                      child: Navigator(
+                        onGenerateRoute: (_) => PageRouteBuilder(
+                          opaque: false,
+                          pageBuilder: (context, _, __) => FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Scaffold(
+                              backgroundColor: Colors.transparent,
+                              body: _BlackBoxPanel(
+                                  onClose: _close,
+                                  captureScreen: _captureScreen),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -478,6 +489,11 @@ class _FloatingTriggerButton extends StatelessWidget {
               offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: const Icon(
+          Icons.bug_report,
+          color: Colors.white,
+          size: 20,
         ),
       ),
     );

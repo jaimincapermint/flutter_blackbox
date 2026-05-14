@@ -830,12 +830,20 @@ class _CollapsibleJsonSectionState extends State<_CollapsibleJsonSection> {
   bool _expanded = false;
 
   // Cache the decoded result — jsonDecode is not called on every build().
-  late final dynamic _parsed;
+  late dynamic _parsed;
 
   @override
   void initState() {
     super.initState();
     _parsed = _decodeData(widget.data);
+  }
+
+  @override
+  void didUpdateWidget(_CollapsibleJsonSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data != widget.data) {
+      _parsed = _decodeData(widget.data);
+    }
   }
 
   static dynamic _decodeData(dynamic d) {

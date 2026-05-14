@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.5.0] - 2026-05-14
+
+### Added
+- **BlackBoxObserver API (Crashlytics/Sentry Integration)**: Professional teams can now forward BlackBox telemetry to external tools automatically without breaking the zero-dependency rule.
+  - Listen to `onCrash`, `onNetworkError`, `onNetworkResponse`, and `onLog`.
+  - Added `CrashEntry.toFormattedString()` to instantly generate beautiful, readable text payloads for Slack webhooks or custom logging APIs.
+- **Auto-Generated Crashlytics Adapter**: If the `flutter_blackbox:init` CLI tool detects `firebase_crashlytics` in your `pubspec.yaml`, it automatically generates a `CrashlyticsObserver` implementation specifically tagged for easy filtering in the Firebase dashboard.
+- **Enterprise Trust Signals**: Added a comprehensive `CONTRIBUTING.md` and structured GitHub Issue templates for bug reports and feature requests.
+- **CI/CD Pipeline**: Added GitHub Actions workflow to strictly enforce `dart format`, `dart analyze`, and `pana` scoring.
+- **SEO & Discoverability**: Updated `pubspec.yaml` description with targeted keywords and linked GitHub Sponsors in the `funding` key.
+- **Storage Panel — Destructive Action Guard**: Added a confirmation dialog before "Clear All" in the Storage Inspector to prevent accidental data loss.
+
+### Fixed
+- **Crash — Empty Connectivity Result**: Fixed `StateError: No element` crash in `platform_info_impl.dart` when `connectivity_plus` returns an empty result list. Added `isNotEmpty` guard before accessing `.first`.
+- **Memory Leak — Duplicate FPS Callbacks**: `FpsMonitor.start()` called after `stop()` would register a second permanent frame callback via `addPersistentFrameCallback` (which cannot be removed). Added a `_callbackRegistered` flag to ensure exactly one callback exists.
+- **Memory Leak — Setup Teardown**: `BlackBox.setup()` teardown was missing `fpsMonitor.stop()`, leaving orphaned frame callbacks when re-initializing.
+- **Platform Error Double-Reporting**: `PlatformDispatcher.onError` override was hardcoded to return `false`, ignoring the original handler's return value. This caused errors to double-report to the default handler even when the app's original handler already handled them. Now correctly forwards the return value.
+- **Stale JSON in Network Panel**: `_CollapsibleJsonSection` cached parsed JSON only in `initState` via `late final`. When the widget was rebuilt with new data (e.g., a response arriving while expanded), it would display stale content. Added `didUpdateWidget` to re-parse on data changes.
+- **setState-after-dispose in Storage Panel**: Added `mounted` guards to `_deleteKey()`, `_clearAll()`, `_editValue()`, and `_addNewKey()` after their async adapter calls. Without these, switching tabs or closing the overlay during an in-flight storage operation would trigger a framework warning.
+
+### Changed
+- Shortened `pubspec.yaml` description to 165 characters (was 234) to comply with pub.dev's 180-character limit and restore 10/10 convention points.
+- All code formatted with `dart format` — 0 formatting issues.
+
+---
+
 ## [0.4.0] - 2026-05-05
 
 ### Performance

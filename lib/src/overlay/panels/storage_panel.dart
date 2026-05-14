@@ -61,12 +61,38 @@ class _StoragePanelState extends State<StoragePanel> {
 
   Future<void> _deleteKey(String key) async {
     await _adapters[_selectedAdapter].delete(key);
-    _loadData();
+    if (mounted) _loadData();
   }
 
   Future<void> _clearAll() async {
-    await _adapters[_selectedAdapter].clear();
-    _loadData();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Clear all data?',
+            style: TextStyle(fontSize: 13, color: Colors.white)),
+        content: Text(
+          'This will delete all keys in "${_adapters[_selectedAdapter].name}". This action cannot be undone.',
+          style: const TextStyle(fontSize: 12, color: Colors.white60),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white38, fontSize: 12)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete All',
+                style: TextStyle(color: Color(0xFFE24B4A), fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _adapters[_selectedAdapter].clear();
+      if (mounted) _loadData();
+    }
   }
 
   Future<void> _editValue(String key, dynamic currentValue) async {
@@ -87,7 +113,7 @@ class _StoragePanelState extends State<StoragePanel> {
     if (result != null && mounted) {
       final parsedValue = _parseValue(result.value, result.type);
       await _adapters[_selectedAdapter].write(key, parsedValue);
-      _loadData();
+      if (mounted) _loadData();
     }
   }
 
@@ -103,7 +129,7 @@ class _StoragePanelState extends State<StoragePanel> {
         mounted) {
       final parsedValue = _parseValue(result.value, result.type);
       await _adapters[_selectedAdapter].write(result.key!, parsedValue);
-      _loadData();
+      if (mounted) _loadData();
     }
   }
 
